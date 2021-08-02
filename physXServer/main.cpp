@@ -214,9 +214,10 @@ void grabObject(int id, bool hand, bool grab)
 
 			if (gInstance->mScene->raycast(clients[id].m_lHand->getGlobalPose().p + dir * 0.011, dir, 0.05, hit)) {
 				PxRigidActor* blockObject = hit.block.actor;
+				// 조인트 위치 확인해보자 손바닥의
 				clients[id].m_lHandJoint = PxFixedJointCreate(*gInstance->mPhysics, clients[id].m_lHand, PxTransform(PxVec3(-0.01, 0, 0)), blockObject, PxTransform(blockObject->getGlobalPose().p - hit.block.position));
-				clients[id].m_lHandJoint->setConstraintFlag(PxConstraintFlag::eCOLLISION_ENABLED, false);
-				clients[id].m_lHandJoint->setConstraintFlag(PxConstraintFlag::eVISUALIZATION, true);
+				/*clients[id].m_lHandJoint->setConstraintFlag(PxConstraintFlag::eCOLLISION_ENABLED, false);
+				clients[id].m_lHandJoint->setConstraintFlag(PxConstraintFlag::eVISUALIZATION, true);*/
 			}
 		}
 		else {
@@ -244,8 +245,8 @@ void grabObject(int id, bool hand, bool grab)
 			if (gInstance->mScene->raycast(clients[id].m_rHand->getGlobalPose().p + dir * 0.011, dir, 0.05, hit)) {
 				PxRigidActor* blockObject = hit.block.actor;
 				clients[id].m_rHandJoint = PxFixedJointCreate(*gInstance->mPhysics, clients[id].m_rHand, PxTransform(PxVec3(-0.01, 0, 0)), blockObject, PxTransform(hit.block.position - blockObject->getGlobalPose().p));
-				clients[id].m_rHandJoint->setConstraintFlag(PxConstraintFlag::eCOLLISION_ENABLED, false);
-				clients[id].m_rHandJoint->setConstraintFlag(PxConstraintFlag::eVISUALIZATION, true);
+				/*clients[id].m_rHandJoint->setConstraintFlag(PxConstraintFlag::eCOLLISION_ENABLED, false);
+				clients[id].m_rHandJoint->setConstraintFlag(PxConstraintFlag::eVISUALIZATION, true);*/
 			}
 		}
 		else {
@@ -293,8 +294,8 @@ void process_packet(int id)
 		clients[id].rHand_rW = p->rHand_rW;*/
 
 		//send_move_packet(id, id);
-		if (clients[CLIENT_NUM - 1 - id].conected)
-			send_move_packet(CLIENT_NUM - 1 - id, id);
+		//if (clients[CLIENT_NUM - 1 - id].conected)
+			//send_move_packet(CLIENT_NUM - 1 - id, id);
 		break;
 	}
 	case CS_PACKET_GRAB: {
@@ -399,13 +400,13 @@ void createObject()
 	puzzleHint3->userData = (void*)&id[2];
 	gInstance->mScene->addActor(*puzzleHint3);
 
-	PxRigidDynamic* vase1 = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(264.4, 4.496517, 315.4), PxQuat(-0.0040726, 0.7070951, 0.7070951, 0.0040726)), *vase02Shape, 5);
+	PxRigidDynamic* vase1 = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(264.4, 5, 315.4), PxQuat(-0.0040726, 0.7070951, 0.7070951, 0.0040726)), *vase02Shape, 5);
 	vase1->setActorFlag(PxActorFlag::eSEND_SLEEP_NOTIFIES, true);
 	id[3] = 3;
 	vase1->userData = (void*)&id[3];
 	gInstance->mScene->addActor(*vase1);
 
-	PxRigidDynamic* vase2 = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(263.8, 4.496517, 315.4), PxQuat(-0.0040726, 0.7070951, 0.7070951, 0.0040726)), *vase02Shape, 5);
+	PxRigidDynamic* vase2 = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(263.8, 5, 315.4), PxQuat(-0.0040726, 0.7070951, 0.7070951, 0.0040726)), *vase02Shape, 5);
 	vase2->setActorFlag(PxActorFlag::eSEND_SLEEP_NOTIFIES, true);
 	id[4] = 4;
 	vase2->userData = (void*)&id[4];
@@ -417,7 +418,7 @@ void createObject()
 	vase3->userData = (void*)&id[5];
 	gInstance->mScene->addActor(*vase3);
 
-	PxRigidDynamic* vase4 = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(273, 3.496519, 330.4), PxQuat(-0.5, 0.5, 0.5, 0.5)), *vase02Shape, 5);
+	PxRigidDynamic* vase4 = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(273, 4, 330.4), PxQuat(-0.5, 0.5, 0.5, 0.5)), *vase02Shape, 5);
 	vase4->setActorFlag(PxActorFlag::eSEND_SLEEP_NOTIFIES, true);
 	id[6] = 6;
 	vase4->userData = (void*)&id[6];
@@ -429,7 +430,7 @@ void createObject()
 	vase5->userData = (void*)&id[7];
 	gInstance->mScene->addActor(*vase5);
 
-	PxRigidDynamic* vase6 = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(273, 3.496519, 329.9), PxQuat(-0.5, 0.5, 0.5, 0.5)), *vase02Shape, 5);
+	PxRigidDynamic* vase6 = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(273, 4, 329.9), PxQuat(-0.5, 0.5, 0.5, 0.5)), *vase02Shape, 5);
 	vase6->setActorFlag(PxActorFlag::eSEND_SLEEP_NOTIFIES, true);
 	id[8] = 8;
 	vase6->userData = (void*)&id[8];
@@ -494,7 +495,7 @@ void setupCommonCookingParams(PxCookingParams& params, bool skipMeshCleanup, boo
 		params.meshPreprocessParams |= PxMeshPreprocessingFlag::eDISABLE_ACTIVE_EDGES_PRECOMPUTE;
 }
 
-void createBV33TriangleMesh(PxU32 numVertices, const PxVec3* vertices, PxU32 numTriangles, const PxU32* indices,
+PxShape* createBV33TriangleMesh(PxU32 numVertices, const PxVec3* vertices, PxU32 numTriangles, const PxU32* indices,
 	bool skipMeshCleanup, bool skipEdgeData, bool inserted, bool cookingPerformance, bool meshSizePerfTradeoff, const PxTransform& transform)
 {
 	PxTriangleMeshDesc meshDesc;
@@ -565,17 +566,20 @@ void createBV33TriangleMesh(PxU32 numVertices, const PxVec3* vertices, PxU32 num
 	if (triMesh) {
 		PxTriangleMeshGeometry triGeom;
 		triGeom.triangleMesh = triMesh;
-		//PxRigidStatic* actor = gInstance->mPhysics->createRigidStatic(transform);
+
 		PxShape* shape = gInstance->mPhysics->createShape(triGeom, *gInstance->mMaterial);
-		shape->setLocalPose(PxTransform(PxVec3(-6.973256/2, -0.394945/2, 21.30691/2)));
-		PxRigidStatic* actor = PxCreateStatic(*gInstance->mPhysics, transform, *shape);
-		//PxRigidActorExt::createExclusiveShape(*actor, triGeom, *gInstance->mMaterial);
+
+		return shape;
+
+		/*PxRigidStatic* actor = PxCreateStatic(*gInstance->mPhysics, transform, *shape);
+
 		gInstance->mScene->addActor(*actor);
-		shape->release();
+		shape->release();*/
 	}
+	return nullptr;
 }
 
-void createMap(const char* fileName, const PxTransform& transform)
+PxShape* createTriangleMesh(const char* fileName, const PxTransform& transform)
 {
 	PxU32 numVertices;
 	PxVec3* vertices = nullptr;
@@ -584,29 +588,145 @@ void createMap(const char* fileName, const PxTransform& transform)
 
 	gParser.parseTriangleMeshFile(fileName, &numVertices, vertices, &numTriangles, indices);
 
-	createBV33TriangleMesh(numVertices, vertices, numTriangles, indices, false, false, false, false, false, transform);
-
+	PxShape* shape = createBV33TriangleMesh(numVertices, vertices, numTriangles, indices, false, false, false, false, false, transform);
+	
 	delete[] vertices;
 	delete[] indices;
+
+	if (shape)
+		return shape;
+	return nullptr;
+}
+
+void createEnvironment()
+{
+	PxShape* floor = gInstance->mPhysics->createShape(PxBoxGeometry(3.758223 * 0.687897, 0.718908 * 0.687897, 4.980401 * 0.6878971), *gInstance->mMaterial);
+
+	vector<PxRigidStatic*> floors;
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-5.891041, -1.114556, -22.530620)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-5.891041, -1.114556, -22.530620)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-4.373831, -1.143186, -28.730610)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-9.341066, -0.618056, 58.869380)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-14.041070, -0.618057, 52.469380)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(5.158958, -1.143187, -35.330620)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-7.041069, -1.064557, -6.980629)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(5.358972, -1.143186, -28.730610)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-5.641038, -1.114556, -12.330620)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-22.041060, -0.718066, 39.869380)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-2.241058, -1.064558, -7.130623)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(0.558932, -1.143186, -28.730610)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-25.541060, -1.218068, 23.169360)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-9.341047, -1.143186, -28.730610)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-4.373831, -1.143188, -35.330620)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-9.141035, -1.143187, -35.330620)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-5.641038, -1.114556, -18.980610)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-22.041060, -1.118060, 34.569390)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-7.741056, -1.214556, -0.680610)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-0.791071, -1.114556, -10.580620)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-21.441050, -1.218069, 16.769370)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-9.441072, -0.618054, 71.069390)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-20.741060, -1.218070, 10.269370)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-18.841050, -0.618057, 52.469380)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-14.041070, -0.618056, 58.869380)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-30.841060, -1.218069, 16.769370)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-0.791071, -1.114560, -22.530620)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(2.858963, -1.114556, -13.330620)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-25.841060, -1.218070, 10.269370)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-4.441049, -0.618055, 64.669400)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-4.441049, -0.618054, 71.069390)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-23.441060, -0.518051, 52.469380)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-26.041050, -1.218069, 16.769370)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-30.841060, -1.218070, 10.269370)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-12.341050, -1.214556, 1.669396)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-9.341066, -0.618055, 64.669400)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-22.041050, -0.518052, 46.169400)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(0.258941, -1.143188, -35.330620)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-30.541050, -1.218067, 29.759390)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-20.761170, -1.218067, 29.759390)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-0.791071, -1.114556, -16.730610)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(2.708947, -1.064557, -7.130623)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-30.541050, -1.218068, 23.169360)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-21.441050, -1.218068, 23.169360)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-25.541060, -1.218067, 29.759390)), *floor));
+
+	for (auto i = floors.begin(); i != floors.end(); ++i)
+		gInstance->mScene->addActor(**i);
+
+	PxShape* floor2s = gInstance->mPhysics->createShape(PxBoxGeometry(6.143844, 1.809403 * 0.5, 7.119962), *gInstance->mMaterial);
+
+	PxRigidStatic* floor2 = PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-9.800447, -0.123929, 21.986960)), *floor2s);
+	gInstance->mScene->addActor(*floor2);
+
+	PxShape* lowWall = gInstance->mPhysics->createShape(PxBoxGeometry(9.993652 * 0.3554256, 3.502743 * 0.3554256, 2.433008 * 0.3554256), *gInstance->mMaterial);
+	PxShape* lowWall2= gInstance->mPhysics->createShape(PxBoxGeometry(9.993652 * 0.25, 3.502743 * 0.25, 2.433008 * 0.25), *gInstance->mMaterial);
+
+	vector<PxRigidStatic*> lowWalls;
+	lowWalls.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-58.154770, -1.456249, 21.361720), PxQuat(0, 0.4907745, 0, 0.8712866)), *lowWall));
+	lowWalls.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-11.184440, -0.759763, -29.343510),PxQuat(0, 0.7071068, 0, 0.7071068)), *lowWall));
+	lowWalls.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-11.184440, -0.759764, -36.043500), PxQuat(0, 0.7071068, 0, 0.7071068)), *lowWall));
+	lowWalls.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-11.184440, -0.759764, -36.043500)), *lowWall));
+	lowWalls.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-27.230740, -0.253092, 31.087360)), *lowWall2));
+
+	for (auto i = lowWalls.begin(); i != lowWalls.end(); ++i)
+		gInstance->mScene->addActor(**i);
+
+	PxShape* faceWall = gInstance->mPhysics->createShape(PxBoxGeometry(7.061144 * 0.3536491, 6.413379 * 0.3536491, 0.558719 * 0.3536491), *gInstance->mMaterial);
+	PxShape* faceWall2= gInstance->mPhysics->createShape(PxBoxGeometry(7.061144 * 0.5, 6.413379 * 0.5, 0.558719 * 0.5), *gInstance->mMaterial);
+
+	vector<PxRigidStatic*> faceWalls;
+	faceWalls.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-20.032130, 1.264999, 41.723050), PxQuat(0, -0.6759633, 0, 0.7369353)), *faceWall));
+	faceWalls.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-19.632130, 1.265000, 46.223050), PxQuat(0, -0.6759633, 0, 0.7369353)), *faceWall));
+	faceWalls.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-24.632140, 1.264999, 42.123040), PxQuat(0, -0.6759633, 0, 0.7369353)), *faceWall));
+	faceWalls.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-3.421472, 1.179983, 71.217920), PxQuat(0, 0.717774, 0, 0.6962762)), *faceWall));
+	faceWalls.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-3.621487, 1.179982, 66.417900), PxQuat(0, 0.717774, 0, 0.6962762)), *faceWall));
+	faceWalls.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-1.320430, 1.179981, 63.476190), PxQuat(0, 0.1657964, 0, 0.98616)), *faceWall));
+	faceWalls.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-45.741440, -0.165425, 13.240280), PxQuat(0, -0.1779951, 0, 0.9840314)), *faceWall));
+	faceWalls.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-42.182320, -0.165425, 14.641560), PxQuat(0, -0.1996416, 0, 0.979869)), *faceWall));
+	faceWalls.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(5.931244, 2.078884, -25.784020)), *faceWall2));
+	faceWalls.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-7.468738, 2.175289, -25.784020)), *faceWall2));
+	faceWalls.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-13.868740, 2.175289, -25.784020)), *faceWall2));
+
+	for (auto i = faceWalls.begin(); i != faceWalls.end(); ++i)
+		gInstance->mScene->addActor(**i);
+
+	PxShape* column = gInstance->mPhysics->createShape(PxBoxGeometry(3.346645 * 0.275378, 6.738008 * 0.275378, 4.355217 * 0.275378), *gInstance->mMaterial);
+
+	vector<PxRigidStatic*> columns;
+	columns.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-32.449540, 0.741323, 10.731020)), *column));
+	columns.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-12.429860, 0.664695, 48.366620)), *column));
+	columns.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-14.018170, 0.664695, 48.366620)), *column));
+	columns.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-15.618160, 0.664695, 48.366620)), *column));
+
+	for (auto i = columns.begin(); i != columns.end(); ++i)
+		gInstance->mScene->addActor(**i);
+
+	PxShape* stairShape = createTriangleMesh("stairMeshData.json", PxTransform(PxVec3(0, 0, 0)));
+
+	PxRigidStatic* stair1 = PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-9.021679 * 2, -0.4976641 * 2, 8.18721 * 2)), *stairShape);
+	gInstance->mScene->addActor(*stair1);
+	PxRigidStatic* stair2 = PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-9.021679 * 2, -0.4976632 * 2, 13.68721 * 2)), *stairShape);
+	gInstance->mScene->addActor(*stair2);
 }
 
 int main()
 {
 	gInstance = PhysXClass::getInstance();
 
-	/*createObject();
-	createMap("meshData.json", PxTransform(PxVec3(277.0434, 3.7, 265.1256)));*/
+	createObject();
+	createEnvironment();
+	PxShape* map1Shape = createTriangleMesh("shellMeshData.json", PxTransform(PxVec3(0, 0, 0)));
+	PxRigidStatic* map1 = PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(0, 0, 0)), *map1Shape);
+	gInstance->mScene->addActor(*map1);
 
-	PxRigidStatic* groundPlane = PxCreatePlane(*gInstance->mPhysics, PxPlane(0, 1, 0, 0), *gInstance->mMaterial);
+	//PxRigidStatic* groundPlane = PxCreatePlane(*gInstance->mPhysics, PxPlane(0, 1, 0, 0), *gInstance->mMaterial);
+	//gInstance->mScene->addActor(*groundPlane);
 
-	gInstance->mScene->addActor(*groundPlane);
-
-	PxRigidDynamic* box = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(0, 0.5, 2.57)), PxBoxGeometry(0.5, 0.5, 0.5), *gInstance->mMaterial, 5);
+	/*PxRigidDynamic* box = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(0, 0.5, 2.57)), PxBoxGeometry(0.5, 0.5, 0.5), *gInstance->mMaterial, 5);
 	box->setActorFlag(PxActorFlag::eSEND_SLEEP_NOTIFIES, true);
 	int* ud = new int;
 	*ud = 0;
 	box->userData = (void*)ud;
-	gInstance->mScene->addActor(*box);
+	gInstance->mScene->addActor(*box);*/
 
 	int retval;
 
@@ -665,34 +785,34 @@ int main()
 	//while (1) {
 		// accept()
 	addrlen = sizeof(clientaddr);
-	for (int i = 0; i < CLIENT_NUM; ++i) {
-		clients[i].m_recv_over.id = i;
-		clients[i].m_sock = accept(g_lSocket, (SOCKADDR*)&clientaddr, &addrlen);
-		err_display("accept: ");
-		printf("\n클라이언트 접속: IP 주소=%s,포트 번호=%d\n",
-			inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port));
+	//for (int i = 0; i < CLIENT_NUM; ++i) {
+	//	clients[i].m_recv_over.id = i;
+	//	clients[i].m_sock = accept(g_lSocket, (SOCKADDR*)&clientaddr, &addrlen);
+	//	err_display("accept: ");
+	//	printf("\n클라이언트 접속: IP 주소=%s,포트 번호=%d\n",
+	//		inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port));
 
-		clients[i].m_body = manager->createController(bodyDesc);
-		PxShape* lHand = gInstance->mPhysics->createShape(PxBoxGeometry(0.01, 0.04, 0.095), *gInstance->mMaterial);
-		lHand->setLocalPose(PxTransform(PxVec3(-0.03, -0.015, -0.095), PxQuat(PxHalfPi / 3, PxVec3(1, 0, 0))));
-		clients[i].m_lHand = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(0, 0, 0)), *lHand, 5);
-		//clients[i].m_lHand = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(0, 0, 0)), PxBoxGeometry(0.04, 0.095, 0.01), *gInstance->mMaterial, 5);
-		clients[i].m_lHand->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
-		gInstance->mScene->addActor(*clients[i].m_lHand);
-		lHand->release();
-		PxShape* rHand = gInstance->mPhysics->createShape(PxBoxGeometry(0.01, 0.04, 0.095), *gInstance->mMaterial);
-		rHand->setLocalPose(PxTransform(PxVec3(0.03, -0.015, -0.095), PxQuat(PxHalfPi / 3, PxVec3(1, 0, 0))));
-		clients[i].m_rHand = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(0, 0, 0)), *rHand, 5);
-		//clients[i].m_rHand = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(0, 0, 0)), PxBoxGeometry(0.04, 0.095, 0.01), *gInstance->mMaterial, 5);
-		clients[i].m_rHand->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
-		gInstance->mScene->addActor(*clients[i].m_rHand);
-		rHand->release();
+	//	clients[i].m_body = manager->createController(bodyDesc);
+	//	PxShape* lHand = gInstance->mPhysics->createShape(PxBoxGeometry(0.01, 0.04, 0.095), *gInstance->mMaterial);
+	//	lHand->setLocalPose(PxTransform(PxVec3(-0.03, -0.015, -0.095), PxQuat(PxHalfPi / 3, PxVec3(1, 0, 0))));
+	//	clients[i].m_lHand = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(0, 0, 0)), *lHand, 5);
+	//	//clients[i].m_lHand = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(0, 0, 0)), PxBoxGeometry(0.04, 0.095, 0.01), *gInstance->mMaterial, 5);
+	//	clients[i].m_lHand->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
+	//	gInstance->mScene->addActor(*clients[i].m_lHand);
+	//	lHand->release();
+	//	PxShape* rHand = gInstance->mPhysics->createShape(PxBoxGeometry(0.01, 0.04, 0.095), *gInstance->mMaterial);
+	//	rHand->setLocalPose(PxTransform(PxVec3(0.03, -0.015, -0.095), PxQuat(PxHalfPi / 3, PxVec3(1, 0, 0))));
+	//	clients[i].m_rHand = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(0, 0, 0)), *rHand, 5);
+	//	//clients[i].m_rHand = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(0, 0, 0)), PxBoxGeometry(0.04, 0.095, 0.01), *gInstance->mMaterial, 5);
+	//	clients[i].m_rHand->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
+	//	gInstance->mScene->addActor(*clients[i].m_rHand);
+	//	rHand->release();
 
-		DWORD flags = 0;
-		WSARecv(clients[i].m_sock, &clients[i].m_recv_over.wsabuf, 1, NULL, &flags, &clients[i].m_recv_over.over, recv_complete);
-		/*if (WSAGetLastError() != WSA_IO_PENDING)
-			err_display("wsarecv: ");*/
-	}
+	//	DWORD flags = 0;
+	//	WSARecv(clients[i].m_sock, &clients[i].m_recv_over.wsabuf, 1, NULL, &flags, &clients[i].m_recv_over.over, recv_complete);
+	//	/*if (WSAGetLastError() != WSA_IO_PENDING)
+	//		err_display("wsarecv: ");*/
+	//}
 	//}
 
 	/*while (clients[0].conected == false && clients[1].conected == false);

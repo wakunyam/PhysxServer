@@ -23,9 +23,9 @@ void JsonParser::parseTriangleMeshFile(const char* fileName, PxU32* numVertices,
 	vertices = new PxVec3[*numVertices];
 	Value vertexValue = verticesValue["vertex"];
 	for (unsigned int i = 0; i < *numVertices; ++i) {
-		vertices[i].x = vertexValue[i]["x"].asFloat() * 0.0254 * 2;
-		vertices[i].y = vertexValue[i]["y"].asFloat() * 0.0254 * 2;
-		vertices[i].z = vertexValue[i]["z"].asFloat() * 0.0254 * 2;
+		vertices[i].x = vertexValue[i]["x"].asFloat() * 0.01;
+		vertices[i].y = vertexValue[i]["y"].asFloat() * 0.01;
+		vertices[i].z = vertexValue[i]["z"].asFloat() * 0.01;
 	}
 
 	Value indicesValue = root["indices"];
