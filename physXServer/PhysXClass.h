@@ -28,7 +28,7 @@ public:
 
 	static PhysXClass* getInstance();
 	~PhysXClass();
-	void stepPhysics();
+	void stepPhysics(float elapsedTime);
 };
 
 

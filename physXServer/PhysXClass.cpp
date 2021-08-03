@@ -73,9 +73,9 @@ PhysXClass::~PhysXClass()
 	}
 }
 
-void PhysXClass::stepPhysics()
+void PhysXClass::stepPhysics(float elapsedTime)
 {
-	mScene->simulate(1.0f / 60.0f);
+	mScene->simulate(elapsedTime);
 
 	mScene->fetchResults(true);
 }
