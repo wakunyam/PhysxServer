@@ -348,36 +348,37 @@ void createObject()
 	int* id = new int[15];
 
 	PxShape* vase01Shape = gInstance->mPhysics->createShape(PxBoxGeometry(0.5394133/2, 0.8277771/2, 0.5394133/2), *gInstance->mMaterial);
-	PxShape* vase02Shape = gInstance->mPhysics->createShape(PxBoxGeometry(0.2987156/2, 0.2937585/2, 1.080622/2), *gInstance->mMaterial);
-	PxShape* puzzleHintShape = gInstance->mPhysics->createShape(PxBoxGeometry(1.0/2, 0.5/2, 0.001/2), *gInstance->mMaterial);
-	PxShape* puzzleHintShape1 = gInstance->mPhysics->createShape(PxBoxGeometry(0.5 / 2, 1.0 / 2, 0.001 / 2), *gInstance->mMaterial);
+	PxShape* vase02Shape = gInstance->mPhysics->createShape(PxBoxGeometry(0.2987156/2, 1.080622/2, 0.2937585 /2), *gInstance->mMaterial);
+	PxShape* puzzleHintShape = gInstance->mPhysics->createShape(PxBoxGeometry(1.0/2, 0.001/2, 0.5 / 2), *gInstance->mMaterial);
+	PxShape* puzzleHintShape1 = gInstance->mPhysics->createShape(PxBoxGeometry(0.5 / 2, 0.001 / 2, 1.0 / 2), *gInstance->mMaterial);
+	PxShape* puzzleHintShape2 = gInstance->mPhysics->createShape(PxBoxGeometry(0.01 / 2, 0.5 / 2, 1.0 / 2), *gInstance->mMaterial);
 	PxShape* puzzleShape = gInstance->mPhysics->createShape(PxBoxGeometry(0.4687378/2, 1.3590325/2, 0.4566437/2), *gInstance->mMaterial);
 
-	PxRigidDynamic* puzzleHint1 = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(-56.983370, -0.199500, 18.864410), PxQuat(PxHalfPi, PxVec3(1, 0, 0))), *puzzleHintShape, 5);
+	PxRigidDynamic* puzzleHint1 = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(-56.983370, -0.199500, 18.864410)), *puzzleHintShape, 5);
 	puzzleHint1->setActorFlag(PxActorFlag::eSEND_SLEEP_NOTIFIES, true);
 	id[0] = 0;
 	puzzleHint1->userData = (void*)&id[0];
 	gInstance->mScene->addActor(*puzzleHint1);
 
-	PxRigidDynamic* puzzleHint2 = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(-9.193359, 0.900500, 22.374420), PxQuat(PxHalfPi, PxVec3(1, 0, 0))), *puzzleHintShape1, 5);
+	PxRigidDynamic* puzzleHint2 = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(-9.193359, 0.900500, 22.374420)), *puzzleHintShape1, 5);
 	puzzleHint2->setActorFlag(PxActorFlag::eSEND_SLEEP_NOTIFIES, true);
 	id[1] = 1;
 	puzzleHint2->userData = (void*)&id[1];
 	gInstance->mScene->addActor(*puzzleHint2);
 
-	PxRigidDynamic* puzzleHint3 = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(-11.242850, 0.850000, -27.125580), PxQuat(0.5, -0.5, -0.5, 0.5)), *puzzleHintShape1, 5);
+	PxRigidDynamic* puzzleHint3 = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(-11.242850, 0.850000, -27.125580)), *puzzleHintShape1, 5);
 	puzzleHint3->setActorFlag(PxActorFlag::eSEND_SLEEP_NOTIFIES, true);
 	id[2] = 2;
 	puzzleHint3->userData = (void*)&id[2];
 	gInstance->mScene->addActor(*puzzleHint3);
 
-	PxRigidDynamic* vase1 = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(-12.643370, 1.336746, 50.274410), PxQuat(-0.0040726, 0.7070951, 0.7070951, 0.0040726)), *vase02Shape, 5);
+	PxRigidDynamic* vase1 = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(-12.643370, 1.336746, 50.274410)), *vase02Shape, 5);
 	vase1->setActorFlag(PxActorFlag::eSEND_SLEEP_NOTIFIES, true);
 	id[3] = 3;
 	vase1->userData = (void*)&id[3];
 	gInstance->mScene->addActor(*vase1);
 
-	PxRigidDynamic* vase2 = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(-13.243380, 1.336746, 50.274410), PxQuat(-0.0040726, 0.7070951, 0.7070951, 0.0040726)), *vase02Shape, 5);
+	PxRigidDynamic* vase2 = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(-13.243380, 1.336746, 50.274410)), *vase02Shape, 5);
 	vase2->setActorFlag(PxActorFlag::eSEND_SLEEP_NOTIFIES, true);
 	id[4] = 4;
 	vase2->userData = (void*)&id[4];
@@ -389,19 +390,19 @@ void createObject()
 	vase3->userData = (void*)&id[5];
 	gInstance->mScene->addActor(*vase3);
 
-	PxRigidDynamic* vase4 = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(-4.043365, 0.336748, 65.274410), PxQuat(-0.5, 0.5, 0.5, 0.5)), *vase02Shape, 5);
+	PxRigidDynamic* vase4 = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(-4.043365, 0.336748, 65.274410)), *vase02Shape, 5);
 	vase4->setActorFlag(PxActorFlag::eSEND_SLEEP_NOTIFIES, true);
 	id[6] = 6;
 	vase4->userData = (void*)&id[6];
 	gInstance->mScene->addActor(*vase4);
 
-	PxRigidDynamic* vase5 = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(-4.143372, 0.107168, 64.174410), PxQuat(0, -0.7071068, 0, 0.7071068)), *vase01Shape, 5);
+	PxRigidDynamic* vase5 = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(-4.143372, 0.107168, 64.174410)), *vase01Shape, 5);
 	vase5->setActorFlag(PxActorFlag::eSEND_SLEEP_NOTIFIES, true);
 	id[7] = 7;
 	vase5->userData = (void*)&id[7];
 	gInstance->mScene->addActor(*vase5);
 
-	PxRigidDynamic* vase6 = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(-4.043365, 0.336748, 64.774410), PxQuat(-0.5, 0.5, 0.5, 0.5)), *vase02Shape, 5);
+	PxRigidDynamic* vase6 = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(-4.043365, 0.336748, 64.774410)), *vase02Shape, 5);
 	vase6->setActorFlag(PxActorFlag::eSEND_SLEEP_NOTIFIES, true);
 	id[8] = 8;
 	vase6->userData = (void*)&id[8];
@@ -573,7 +574,6 @@ void createEnvironment()
 {
 	PxShape* floor = gInstance->mPhysics->createShape(PxBoxGeometry(3.758223 * 0.687897, 0.718908 * 0.687897, 4.980401 * 0.6878971), *gInstance->mMaterial);
 	vector<PxRigidStatic*> floors;
-	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-5.891041, -1.114556, -22.530620)), *floor));
 	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-5.891041, -1.114556, -22.530620)), *floor));
 	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-4.373831, -1.143186, -28.730610)), *floor));
 	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-9.341066, -0.618056, 58.869380)), *floor));
@@ -829,9 +829,13 @@ int main()
 			}
 		}
 		auto elapsedTime = duration_cast<milliseconds>(end_t - start_t).count();
-		start_t = high_resolution_clock::now();
-		gInstance->stepPhysics(elapsedTime);
-		send_object_move_packet();
+		float et = elapsedTime * 0.001;
+		if (et >= 1.f / 60) {
+			start_t = high_resolution_clock::now();
+			gInstance->stepPhysics(et);
+			send_object_move_packet();
+		}
+		SleepEx(1, false);
 		end_t = high_resolution_clock::now();
 	}
 
