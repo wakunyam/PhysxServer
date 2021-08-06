@@ -175,12 +175,16 @@ void send_enter_packet(int to_client, int id)
 
 void send_object_move_packet()
 {
-	std::lock_guard<std::mutex> l{ gInstance->mSimulationEventCallback.containerLock };
-	for (auto iter = gInstance->mSimulationEventCallback.actorContainer.begin(); iter != gInstance->mSimulationEventCallback.actorContainer.end(); ++iter) {
+	vector<PxActor*> copyContainer;
+	gInstance->mSimulationEventCallback.containerLock.lock();
+	copy(gInstance->mSimulationEventCallback.actorContainer.begin(), gInstance->mSimulationEventCallback.actorContainer.end(), back_inserter(copyContainer));
+	gInstance->mSimulationEventCallback.containerLock.unlock();
+	for (auto iter = copyContainer.begin(); iter != copyContainer.end(); ++iter) {
 		sc_packet_object_move p;
-		p.id = *(int*)(*iter)->userData;
 		p.size = sizeof(p);
 		p.type = SC_PACKET_OBJECT_MOVE;
+		p.id = *(int*)(*iter)->userData;
+		//cout << p.id << endl;
 		PxTransform t = reinterpret_cast<PxRigidDynamic*>(*iter)->getGlobalPose();
 		p.pX = t.p.x;
 		p.pY = t.p.y;
@@ -203,12 +207,15 @@ void grabObject(int id, bool hand, bool grab)
 			PxRaycastBuffer hit;
 
 			PxVec3 dir = clients[id].m_lHand->getGlobalPose().q.rotate(PxVec3(1, 0, 0));
-
-			if (gInstance->mScene->raycast(clients[id].m_lHand->getGlobalPose().p - clients[id].m_lHand->getCMassLocalPose().p + dir * 0.015, dir, 0.05, hit)) {
+			if (gInstance->mScene->raycast(clients[id].m_lHand->getGlobalPose().p + clients[id].m_lHand->getGlobalPose().q.rotate(clients[id].m_lHand->getCMassLocalPose().p) + dir * 0.015, dir, 0.05, hit)) {
+			//if (gInstance->mScene->raycast(clients[id].m_lHand->getGlobalPose().p + dir * 0.015, dir, 0.05, hit)) {
 				PxRigidActor* blockObject = hit.block.actor;
 				if (blockObject == (PxRigidActor*)clients[id].m_lHand) break;
-				clients[id].m_lHandJoint = PxFixedJointCreate(*gInstance->mPhysics, clients[id].m_lHand, PxTransform(PxVec3(0.01, 0, 0) + clients[id].m_lHand->getCMassLocalPose().p),
-					blockObject, PxTransform(blockObject->getGlobalPose().q.rotateInv(PxVec3(hit.block.position - blockObject->getGlobalPose().p))));
+				clients[id].m_lHandJoint = PxFixedJointCreate(*gInstance->mPhysics, 
+					clients[id].m_lHand, PxTransform(PxVec3(0.01, 0, 0) + clients[id].m_lHand->getCMassLocalPose().p),
+					//clients[id].m_lHand, PxTransform(PxVec3(0.01, 0, 0)),
+					//blockObject, PxTransform(blockObject->getGlobalPose().q.rotateInv(PxVec3(hit.block.position - blockObject->getGlobalPose().p))));
+					blockObject, PxTransform(PxVec3(hit.block.position - blockObject->getGlobalPose().p)));
 				clients[id].m_lHandJoint->setConstraintFlag(PxConstraintFlag::eCOLLISION_ENABLED, false);
 				clients[id].m_lHandJoint->setConstraintFlag(PxConstraintFlag::eVISUALIZATION, true);
 			}
@@ -227,11 +234,15 @@ void grabObject(int id, bool hand, bool grab)
 
 			PxVec3 dir = clients[id].m_rHand->getGlobalPose().q.rotate(PxVec3(-1, 0, 0));
 
-			if (gInstance->mScene->raycast(clients[id].m_rHand->getGlobalPose().p - clients[id].m_rHand->getCMassLocalPose().p + dir * 0.015, dir, 0.05, hit)) {
+			if (gInstance->mScene->raycast(clients[id].m_rHand->getGlobalPose().p + clients[id].m_rHand->getGlobalPose().q.rotate(clients[id].m_rHand->getCMassLocalPose().p) + dir * 0.015, dir, 0.05, hit)) {
+				//if (gInstance->mScene->raycast(clients[id].m_rHand->getGlobalPose().p  + dir * 0.015, dir, 0.05, hit)) {
 				PxRigidActor* blockObject = hit.block.actor;
 				if (blockObject == (PxRigidActor*)clients[id].m_rHand) break;
-				clients[id].m_rHandJoint = PxFixedJointCreate(*gInstance->mPhysics, clients[id].m_rHand, PxTransform(PxVec3(-0.01, 0, 0) + clients[id].m_rHand->getCMassLocalPose().p),
-					blockObject, PxTransform(blockObject->getGlobalPose().q.rotateInv(PxVec3(hit.block.position - blockObject->getGlobalPose().p))));
+				clients[id].m_rHandJoint = PxFixedJointCreate(*gInstance->mPhysics, 
+					clients[id].m_rHand, PxTransform(PxVec3(-0.01, 0, 0) + clients[id].m_rHand->getCMassLocalPose().p),
+					//clients[id].m_rHand, PxTransform(PxVec3(-0.01, 0, 0) ),
+					//blockObject, PxTransform(blockObject->getGlobalPose().q.rotateInv(PxVec3(hit.block.position - blockObject->getGlobalPose().p))));
+					blockObject, PxTransform(PxVec3(hit.block.position - blockObject->getGlobalPose().p)));
 				clients[id].m_rHandJoint->setConstraintFlag(PxConstraintFlag::eCOLLISION_ENABLED, false);
 				clients[id].m_rHandJoint->setConstraintFlag(PxConstraintFlag::eVISUALIZATION, true);
 			}
@@ -268,21 +279,7 @@ void process_packet(int id)
 		clients[id].m_lHand->setKinematicTarget(p->getLHandPose());
 		clients[id].m_rHand->setKinematicTarget(p->getRHandPose());
 
-		/*clients[id].m_lHand->setPosition(PxExtendedVec3(p->lHand_pX, p->lHand_pY, p->lHand_pZ));
-		clients[id].lHand_rX = p->lHand_rX;
-		clients[id].lHand_rY = p->lHand_rY;
-		clients[id].lHand_rZ = p->lHand_rZ;
-		clients[id].lHand_rW = p->lHand_rW;
-
-		clients[id].m_rHand->setPosition(PxExtendedVec3(p->rHand_pX, p->rHand_pY, p->rHand_pZ));
-		clients[id].rHand_rX = p->rHand_rX;
-		clients[id].rHand_rY = p->rHand_rY;
-		clients[id].rHand_rZ = p->rHand_rZ;
-		clients[id].rHand_rW = p->rHand_rW;*/
-
-		//send_move_packet(id, id);
-		//if (clients[CLIENT_NUM - 1 - id].conected)
-			//send_move_packet(CLIENT_NUM - 1 - id, id);
+		//send_move_packet(CLIENT_NUM - 1 - id, id);
 		break;
 	}
 	case CS_PACKET_GRAB: {
@@ -366,7 +363,7 @@ void createObject()
 	puzzleHint2->userData = (void*)&id[1];
 	gInstance->mScene->addActor(*puzzleHint2);
 
-	PxRigidDynamic* puzzleHint3 = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(-11.242850, 0.850000, -27.125580)), *puzzleHintShape1, 5);
+	PxRigidDynamic* puzzleHint3 = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(-11.242850, 0.850000, -27.125580)), *puzzleHintShape2, 5);
 	puzzleHint3->setActorFlag(PxActorFlag::eSEND_SLEEP_NOTIFIES, true);
 	id[2] = 2;
 	puzzleHint3->userData = (void*)&id[2];
@@ -754,12 +751,6 @@ int main()
 		clients[i].conected = false;
 	}
 
-	// 비동기 accept를 어떻게 할지 향후 생각
-	// 1. 쓰레드를 사용해 accept와 worker 분리
-	/*SOCKET cSocket = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
-	g_accept_over.wsabuf.len = static_cast<ULONG>(cSocket);
-	ZeroMemory(&g_accept_over.over, sizeof(g_accept_over.over));*/
-
 	PxControllerManager* manager = PxCreateControllerManager(*gInstance->mScene);
 
 	PxCapsuleControllerDesc bodyDesc;
@@ -801,12 +792,8 @@ int main()
 			err_display("wsarecv: ");*/
 	}
 
-	/*while (clients[0].conected == false && clients[1].conected == false);
-	send_enter_packet(0, 1);
-	send_enter_packet(1, 0);
-
-	while (!all_ready) {
-		if (clients[0].conected && clients[1].conected) all_ready = true;
+	/*while (true) {
+		if (clients[0].conected && clients[1].conected) break;
 		SleepEx(1, true);
 	}
 
@@ -828,15 +815,16 @@ int main()
 				break;
 			}
 		}
+
+		end_t = high_resolution_clock::now();
 		auto elapsedTime = duration_cast<milliseconds>(end_t - start_t).count();
 		float et = elapsedTime * 0.001;
 		if (et >= 1.f / 60) {
-			start_t = high_resolution_clock::now();
+			start_t = end_t;
 			gInstance->stepPhysics(et);
 			send_object_move_packet();
 		}
-		SleepEx(1, false);
-		end_t = high_resolution_clock::now();
+		SleepEx(1, true);
 	}
 
 	// closesocket()
