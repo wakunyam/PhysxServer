@@ -9,7 +9,7 @@ JsonParser::JsonParser()
 	builder["collectComments"] = true;
 }
 
-void JsonParser::parseTriangleMeshFile(const char* fileName, PxU32* numVertices, PxVec3*& vertices, PxU32* numTriangles, PxU32*& indices)
+void JsonParser::parseTriangleMeshFile(const char* fileName, PxU32* numVertices, PxVec3*& vertices, PxU32* numTriangles, PxU32*& indices,PxVec3 scale)
 {
 	ifstream in(fileName, ios::binary);
 
@@ -23,9 +23,9 @@ void JsonParser::parseTriangleMeshFile(const char* fileName, PxU32* numVertices,
 	vertices = new PxVec3[*numVertices];
 	Value vertexValue = verticesValue["vertex"];
 	for (unsigned int i = 0; i < *numVertices; ++i) {
-		vertices[i].x = vertexValue[i]["x"].asFloat() * 0.01;
-		vertices[i].y = vertexValue[i]["y"].asFloat() * 0.01;
-		vertices[i].z = vertexValue[i]["z"].asFloat() * 0.01;
+		vertices[i].x = vertexValue[i]["x"].asFloat() * 0.01 * scale.x;
+		vertices[i].y = vertexValue[i]["y"].asFloat() * 0.01 * scale.y;
+		vertices[i].z = vertexValue[i]["z"].asFloat() * 0.01 * scale.z;
 	}
 
 	Value indicesValue = root["indices"];

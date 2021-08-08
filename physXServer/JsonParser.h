@@ -12,6 +12,6 @@ class JsonParser
 	Value root;
 public:
 	JsonParser();
-	void parseTriangleMeshFile(const char* fileName, PxU32* numVertices, PxVec3*& vertices, PxU32* numTriangles, PxU32*& indices);
+	void parseTriangleMeshFile(const char* fileName, PxU32* numVertices, PxVec3*& vertices, PxU32* numTriangles, PxU32*& indices, PxVec3 scale);
 };
 

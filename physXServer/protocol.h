@@ -1,5 +1,4 @@
 #pragma once
-
 constexpr int SERVER_PORT = 9000;
 constexpr int MAX_ID_LEN = 10;
 
@@ -82,6 +81,7 @@ struct sc_packet_object_move {
 struct cs_packet_login {
 	char size;
 	char type;
+	//bool isVR;
 };
 
 struct cs_packet_move {

@@ -3,6 +3,46 @@
 #include <iostream>
 #include "PxPhysicsAPI.h"
 
+void MySimulationEventCallback::onContact(const PxContactPairHeader& pairHeader, const PxContactPair* pairs, PxU32 nbPairs)
+{
+    for (PxU32 i = 0; i < nbPairs; i++)
+    {
+        UserData* userData0 = (UserData*)pairHeader.actors[0]->userData;
+        UserData* userData1 = (UserData*)pairHeader.actors[1]->userData;
+
+        if (userData0 == nullptr || userData1 == nullptr) continue;
+
+        if (userData0->objType == FilterGroup::eMONSTER && userData1->objType == FilterGroup::eBULLET) {
+            removedActorsLock.lock();
+            if (std::find(removedActors.begin(), removedActors.end(), pairHeader.actors[0]) == removedActors.end())
+                removedActors.emplace_back(pairHeader.actors[0]);
+            if (std::find(removedActors.begin(), removedActors.end(), pairHeader.actors[1]) == removedActors.end())
+                removedActors.emplace_back(pairHeader.actors[1]);
+            removedActorsLock.unlock();
+            // 몬스터 삭제 패킷 전송 or 몬스터 체력을 깎기
+        }
+        else if (userData0->objType == FilterGroup::eBULLET) {
+            removedActorsLock.lock();
+            if (std::find(removedActors.begin(), removedActors.end(), pairHeader.actors[0]) == removedActors.end())
+                removedActors.emplace_back(pairHeader.actors[0]);
+            removedActorsLock.unlock();
+        }
+        else if (userData0->objType == FilterGroup::eBACKGROUND && userData1->objType == FilterGroup::eBULLET) {
+            removedActorsLock.lock();
+            if (std::find(removedActors.begin(), removedActors.end(), pairHeader.actors[1]) == removedActors.end())
+                removedActors.emplace_back(pairHeader.actors[1]);
+            removedActorsLock.unlock();
+
+        }
+        else if (userData0->objType == FilterGroup::eSTUFF && userData1->objType == FilterGroup::eBULLET) {
+            removedActorsLock.lock();
+            if (std::find(removedActors.begin(), removedActors.end(), pairHeader.actors[1]) == removedActors.end())
+                removedActors.emplace_back(pairHeader.actors[1]);
+            removedActorsLock.unlock();
+        }
+    }
+}
+
 void MySimulationEventCallback::onWake(PxActor** actors, PxU32 count)
 {
 	std::lock_guard<std::mutex> l{ containerLock };

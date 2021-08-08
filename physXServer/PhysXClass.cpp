@@ -10,6 +10,21 @@ PhysXClass* PhysXClass::getInstance()
 	return instance;
 }
 
+PxFilterFlags myFilterShader(
+	PxFilterObjectAttributes attributes0, PxFilterData filterData0,
+	PxFilterObjectAttributes attributes1, PxFilterData filterData1,
+	PxPairFlags& pairFlags, const void* constantBlock, PxU32 constantBlockSize)
+{
+	pairFlags = PxPairFlag::eCONTACT_DEFAULT;
+
+	// trigger the contact callback for pairs (A,B) where 
+	// the filtermask of A contains the ID of B and vice versa.
+	if ((filterData0.word0 & filterData1.word1) && (filterData1.word0 & filterData0.word1))
+		pairFlags |= PxPairFlag::eNOTIFY_TOUCH_FOUND | PxPairFlag::eDETECT_CCD_CONTACT | PxPairFlag::eNOTIFY_TOUCH_CCD;
+
+	return PxFilterFlag::eDEFAULT;
+}
+
 PhysXClass::PhysXClass()
 {
 	mFoundation = PxCreateFoundation(PX_PHYSICS_VERSION, mAllocator, mErrorCallback);
@@ -27,9 +42,9 @@ PhysXClass::PhysXClass()
 	sceneDesc.gravity = PxVec3(0.0f, -9.81f, 0.0f);
 	mDispatcher = PxDefaultCpuDispatcherCreate(2);
 	sceneDesc.cpuDispatcher = mDispatcher;
-	sceneDesc.filterShader = PxDefaultSimulationFilterShader;
-	//mSimulationEventCallback = new MySimulationEventCallback;
+	sceneDesc.filterShader = myFilterShader;
 	sceneDesc.simulationEventCallback = &mSimulationEventCallback;
+	sceneDesc.flags |= PxSceneFlag::eENABLE_CCD;
 	mScene = mPhysics->createScene(sceneDesc);
 	mScene->setVisualizationParameter(PxVisualizationParameter::eJOINT_LIMITS, 1);
 	mScene->setVisualizationParameter(PxVisualizationParameter::eJOINT_LOCAL_FRAMES, 1);
