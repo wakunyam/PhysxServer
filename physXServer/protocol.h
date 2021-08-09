@@ -2,16 +2,29 @@
 constexpr int SERVER_PORT = 9000;
 constexpr int MAX_ID_LEN = 10;
 
+enum HandState {
+	eDEFAULT = 0,
+	eGUN = 1
+};
+
+constexpr bool LEFT_HAND = true;
+constexpr bool RIGHT_HAND = false;
+
 #pragma pack(push, 1)
 constexpr char SC_PACKET_LOGIN_OK = 0;
 constexpr char SC_PACKET_MOVE = 1;
 constexpr char SC_PACKET_ENTER = 2;
 constexpr char SC_PACKET_GRAB = 3;
 constexpr char SC_PACKET_OBJECT_MOVE = 4;
+constexpr char SC_PACKET_CHANGE_HAND_STATE = 5;
+constexpr char SC_PACKET_MONSTER_MOVE = 6;
+constexpr char SC_PACKET_MONSTER_REMOVE = 7;
 
 constexpr char CS_PACKET_LOGIN = 0;
 constexpr char CS_PACKET_MOVE = 1;
 constexpr char CS_PACKET_GRAB = 2;
+constexpr char CS_PACKET_CHANGE_HAND_STATE = 3;
+constexpr char CS_PACKET_MONSTER_MOVE = 4;
 
 struct sc_packet_login_ok {
 	char size;
@@ -60,8 +73,6 @@ struct sc_packet_enter {
 	float rX, rY, rZ, rW;
 };
 
-constexpr bool LEFT_HAND = true;
-constexpr bool RIGHT_HAND = false;
 struct sc_packet_grab {
 	char size;
 	char type;
@@ -76,6 +87,28 @@ struct sc_packet_object_move {
 	int id;
 	float pX, pY, pZ;
 	float rX, rY, rZ, rW;
+};
+
+struct sc_packet_change_hand_state {
+	char size;
+	char type;
+	int id;
+	bool hand;
+	HandState state;
+};
+
+struct sc_packet_monster_move {
+	char size;
+	char type;
+	int id;
+	float pX, pY, pZ;
+	float rX, rY, rZ, rW;
+};
+
+struct sc_packet_monster_remove {
+	char size;
+	char type;
+	int id;
 };
 
 struct cs_packet_login {
@@ -108,5 +141,22 @@ struct cs_packet_grab {
 	char type;
 	bool hand;
 	bool grab;
+	float pX, pY, pZ;
+	float dirX, dirY, dirZ;
+};
+
+struct cs_packet_change_hand_state {
+	char size;
+	char type;
+	bool hand;
+	HandState state;
+};
+
+struct cs_packet_monster_move {
+	char size;
+	char type;
+	int id;
+	float pX, pY, pZ;
+	float rX, rY, rZ, rW;
 };
 #pragma pack(pop)
