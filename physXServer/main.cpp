@@ -84,6 +84,33 @@ void err_display(const char* msg)
 void CALLBACK send_complete(DWORD err, DWORD bytes, LPWSAOVERLAPPED over, DWORD flags);
 void CALLBACK recv_complete(DWORD err, DWORD bytes, LPWSAOVERLAPPED over, DWORD flags);
 
+void setupFiltering(PxRigidActor* actor, PxU32 filterGroup, PxU32 filterMask)
+{
+	PxFilterData filterData;
+	filterData.word0 = filterGroup; // word0 = own ID
+	filterData.word1 = filterMask;	// word1 = ID mask to filter pairs that trigger a contact callback;
+	const PxU32 numShapes = actor->getNbShapes();
+	PxShape** shapes = new PxShape * [numShapes];
+	//PxShape** shapes = (PxShape**)SAMPLE_ALLOC(sizeof(PxShape*) * numShapes);
+	actor->getShapes(shapes, numShapes);
+	for (PxU32 i = 0; i < numShapes; i++)
+	{
+		PxShape* shape = shapes[i];
+		shape->setSimulationFilterData(filterData);
+	}
+	delete[] shapes;
+
+	//SAMPLE_FREE(shapes);
+}
+
+void setupFiltering(PxShape* shape, PxU32 filterGroup, PxU32 filterMask)
+{
+	PxFilterData filterData;
+	filterData.word0 = filterGroup; // word0 = own ID
+	filterData.word1 = filterMask;	// word1 = ID mask to filter pairs that trigger a contact callback;
+	shape->setSimulationFilterData(filterData);
+}
+
 void send_packet(int to_client, void* p)
 {
 	char* buf = reinterpret_cast<char*>(p);
@@ -246,6 +273,21 @@ void send_monster_remove()
 }
 
 constexpr float bulletSpeed = 20;
+
+PxRigidDynamic* createBullet(const PxTransform& t, const PxGeometry& geometry, const PxVec3& velocity = PxVec3(0))
+{
+	PxRigidDynamic* bullet = PxCreateDynamic(*gInstance->mPhysics, t, geometry, *gInstance->mMaterial, 10.0f);
+	bullet->setAngularDamping(0.5f);
+	bullet->setLinearVelocity(velocity);
+	UserData* userData = new UserData();
+	userData->id = 0;
+	userData->objType = FilterGroup::eBULLET;
+	bullet->userData = userData;
+	setupFiltering(bullet, FilterGroup::eBULLET, FilterGroup::eBACKGROUND | FilterGroup::eSTUFF);
+	bullet->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, true);
+	gInstance->mScene->addActor(*bullet);
+	return bullet;
+}
 
 void grabTrigger(int id, cs_packet_grab* in_p)
 {
@@ -420,48 +462,6 @@ void CALLBACK recv_complete(DWORD err, DWORD bytes, LPWSAOVERLAPPED over, DWORD 
 		closesocket(clients[id].m_sock);
 	}
 	//cout << "recv" << endl;
-}
-
-void setupFiltering(PxRigidActor* actor, PxU32 filterGroup, PxU32 filterMask)
-{
-	PxFilterData filterData;
-	filterData.word0 = filterGroup; // word0 = own ID
-	filterData.word1 = filterMask;	// word1 = ID mask to filter pairs that trigger a contact callback;
-	const PxU32 numShapes = actor->getNbShapes();
-	PxShape** shapes = new PxShape * [numShapes];
-	//PxShape** shapes = (PxShape**)SAMPLE_ALLOC(sizeof(PxShape*) * numShapes);
-	actor->getShapes(shapes, numShapes);
-	for (PxU32 i = 0; i < numShapes; i++)
-	{
-		PxShape* shape = shapes[i];
-		shape->setSimulationFilterData(filterData);
-	}
-	delete[] shapes;
-
-	//SAMPLE_FREE(shapes);
-}
-
-void setupFiltering(PxShape* shape, PxU32 filterGroup, PxU32 filterMask)
-{
-	PxFilterData filterData;
-	filterData.word0 = filterGroup; // word0 = own ID
-	filterData.word1 = filterMask;	// word1 = ID mask to filter pairs that trigger a contact callback;
-	shape->setSimulationFilterData(filterData);
-}
-
-PxRigidDynamic* createBullet(const PxTransform& t, const PxGeometry& geometry, const PxVec3& velocity = PxVec3(0))
-{
-	PxRigidDynamic* bullet = PxCreateDynamic(*gInstance->mPhysics, t, geometry, *gInstance->mMaterial, 10.0f);
-	bullet->setAngularDamping(0.5f);
-	bullet->setLinearVelocity(velocity);
-	UserData* userData = new UserData();
-	userData->id = 0;
-	userData->objType = FilterGroup::eBULLET;
-	bullet->userData = userData;
-	setupFiltering(bullet, FilterGroup::eBULLET, FilterGroup::eBACKGROUND | FilterGroup::eSTUFF);
-	bullet->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, true);
-	gInstance->mScene->addActor(*bullet);
-	return bullet;
 }
 
 void createObject()
@@ -1030,10 +1030,10 @@ int main()
 			gInstance->stepPhysics(et);
 			send_object_move_packet();
 			gInstance->mSimulationEventCallback.removedActorsLock.lock();
-			if (gInstance->mSimulationEventCallback.removedActors.empty()) {
+			if (!gInstance->mSimulationEventCallback.removedActors.empty()) {
 				for (auto iter = gInstance->mSimulationEventCallback.removedActors.begin(); iter != gInstance->mSimulationEventCallback.removedActors.end(); ++iter) {
 					(*iter)->release();
-
+					// 제거된 몬스터 패킷 전송
 				}
 				gInstance->mSimulationEventCallback.removedActors.clear();
 			}
