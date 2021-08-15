@@ -19,6 +19,7 @@ public:
 
 	PxDefaultCpuDispatcher* mDispatcher = NULL;
 	PxScene* mScene = NULL;
+	PxScene* sceneTwo = NULL;
 
 	PxMaterial* mMaterial = NULL;
 

@@ -13,32 +13,41 @@ void MySimulationEventCallback::onContact(const PxContactPairHeader& pairHeader,
         if (userData0 == nullptr || userData1 == nullptr) continue;
 
         if (userData0->objType == FilterGroup::eMONSTER && userData1->objType == FilterGroup::eBULLET) {
-            removedActorsLock.lock();
-            if (std::find(removedActors.begin(), removedActors.end(), pairHeader.actors[0]) == removedActors.end())
-                removedActors.emplace_back(pairHeader.actors[0]);
+            //removedActorsLock.lock();
+            userData0->hp -= 1;
+            if (userData0->hp <= 0) {
+                if (std::find(removedActors.begin(), removedActors.end(), pairHeader.actors[0]) == removedActors.end())
+                    removedActors.emplace_back(pairHeader.actors[0]);
+            }
             if (std::find(removedActors.begin(), removedActors.end(), pairHeader.actors[1]) == removedActors.end())
                 removedActors.emplace_back(pairHeader.actors[1]);
-            removedActorsLock.unlock();
-            // 몬스터 삭제 패킷 전송 or 몬스터 체력을 깎기
+            //removedActorsLock.unlock();
         }
         else if (userData0->objType == FilterGroup::eBULLET) {
-            removedActorsLock.lock();
+            //removedActorsLock.lock();
             if (std::find(removedActors.begin(), removedActors.end(), pairHeader.actors[0]) == removedActors.end())
                 removedActors.emplace_back(pairHeader.actors[0]);
-            removedActorsLock.unlock();
+            if (userData1->objType == FilterGroup::eMONSTER) {
+                userData1 -= 1;
+                if (userData1->hp <= 0) {
+                    if (std::find(removedActors.begin(), removedActors.end(), pairHeader.actors[1]) == removedActors.end())
+                        removedActors.emplace_back(pairHeader.actors[1]);
+                }
+            }
+            //removedActorsLock.unlock();
         }
         else if (userData0->objType == FilterGroup::eBACKGROUND && userData1->objType == FilterGroup::eBULLET) {
-            removedActorsLock.lock();
+            //removedActorsLock.lock();
             if (std::find(removedActors.begin(), removedActors.end(), pairHeader.actors[1]) == removedActors.end())
                 removedActors.emplace_back(pairHeader.actors[1]);
-            removedActorsLock.unlock();
+            //removedActorsLock.unlock();
 
         }
         else if (userData0->objType == FilterGroup::eSTUFF && userData1->objType == FilterGroup::eBULLET) {
-            removedActorsLock.lock();
+            //removedActorsLock.lock();
             if (std::find(removedActors.begin(), removedActors.end(), pairHeader.actors[1]) == removedActors.end())
                 removedActors.emplace_back(pairHeader.actors[1]);
-            removedActorsLock.unlock();
+            //removedActorsLock.unlock();
         }
     }
 }
@@ -71,7 +80,7 @@ int MySimulationEventCallback::getContainerSize()
 
 PxActor* MySimulationEventCallback::getActor(int id)
 {
-	std::lock_guard<std::mutex> l{ containerLock };
+	//std::lock_guard<std::mutex> l{ containerLock };
 	auto iter = std::find_if(actorContainer.begin(), actorContainer.end(), [id](PxActor* actor) {
 		return *(int*)actor->userData == id;
 		});

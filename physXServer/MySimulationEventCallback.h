@@ -14,6 +14,8 @@ enum FilterGroup {
 
 struct UserData {
 	int id;
+	int hp;
+	int owner_id;
 	FilterGroup objType;
 };
 

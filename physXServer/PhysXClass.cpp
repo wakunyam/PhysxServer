@@ -45,9 +45,12 @@ PhysXClass::PhysXClass()
 	sceneDesc.filterShader = myFilterShader;
 	sceneDesc.simulationEventCallback = &mSimulationEventCallback;
 	sceneDesc.flags |= PxSceneFlag::eENABLE_CCD;
+	sceneDesc.staticStructure = PxPruningStructureType::eDYNAMIC_AABB_TREE;
+	sceneDesc.dynamicStructure = PxPruningStructureType::eDYNAMIC_AABB_TREE;
 	mScene = mPhysics->createScene(sceneDesc);
 	mScene->setVisualizationParameter(PxVisualizationParameter::eJOINT_LIMITS, 1);
 	mScene->setVisualizationParameter(PxVisualizationParameter::eJOINT_LOCAL_FRAMES, 1);
+	sceneTwo = mPhysics->createScene(sceneDesc);
 
 	PxPvdSceneClient* pvdClient = mScene->getScenePvdClient();
 	if (pvdClient) {
@@ -91,6 +94,8 @@ PhysXClass::~PhysXClass()
 void PhysXClass::stepPhysics(float elapsedTime)
 {
 	mScene->simulate(elapsedTime);
+	sceneTwo->simulate(elapsedTime);
 
 	mScene->fetchResults(true);
+	sceneTwo->fetchResults(true);
 }
