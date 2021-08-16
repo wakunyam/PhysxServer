@@ -38,21 +38,31 @@ PhysXClass::PhysXClass()
 
 	mCooking = PxCreateCooking(PX_PHYSICS_VERSION, *mFoundation, PxCookingParams(PxTolerancesScale()));
 
-	PxSceneDesc sceneDesc(mPhysics->getTolerancesScale());
-	sceneDesc.gravity = PxVec3(0.0f, -9.81f, 0.0f);
+	PxSceneDesc sceneDescMap2(mPhysics->getTolerancesScale());
+	sceneDescMap2.gravity = PxVec3(0.0f, -9.81f, 0.0f);
 	mDispatcher = PxDefaultCpuDispatcherCreate(2);
-	sceneDesc.cpuDispatcher = mDispatcher;
-	sceneDesc.filterShader = myFilterShader;
-	sceneDesc.simulationEventCallback = &mSimulationEventCallback;
-	sceneDesc.flags |= PxSceneFlag::eENABLE_CCD;
-	sceneDesc.staticStructure = PxPruningStructureType::eDYNAMIC_AABB_TREE;
-	sceneDesc.dynamicStructure = PxPruningStructureType::eDYNAMIC_AABB_TREE;
-	mScene = mPhysics->createScene(sceneDesc);
-	mScene->setVisualizationParameter(PxVisualizationParameter::eJOINT_LIMITS, 1);
-	mScene->setVisualizationParameter(PxVisualizationParameter::eJOINT_LOCAL_FRAMES, 1);
-	sceneTwo = mPhysics->createScene(sceneDesc);
+	sceneDescMap2.cpuDispatcher = mDispatcher;
+	sceneDescMap2.filterShader = myFilterShader;
+	sceneDescMap2.simulationEventCallback = &mSimulationEventCallbackMap2;
+	sceneDescMap2.flags |= PxSceneFlag::eENABLE_CCD;
+	sceneDescMap2.staticStructure = PxPruningStructureType::eDYNAMIC_AABB_TREE;
+	sceneDescMap2.dynamicStructure = PxPruningStructureType::eDYNAMIC_AABB_TREE;
+	mMap2Scene = mPhysics->createScene(sceneDescMap2);
+	mMap2Scene->setVisualizationParameter(PxVisualizationParameter::eJOINT_LIMITS, 1);
+	mMap2Scene->setVisualizationParameter(PxVisualizationParameter::eJOINT_LOCAL_FRAMES, 1);
 
-	PxPvdSceneClient* pvdClient = mScene->getScenePvdClient();
+	PxSceneDesc sceneDescMap4(mPhysics->getTolerancesScale());
+	sceneDescMap4.gravity = PxVec3(0.0f, -9.81f, 0.0f);
+	mDispatcher = PxDefaultCpuDispatcherCreate(2);
+	sceneDescMap4.cpuDispatcher = mDispatcher;
+	sceneDescMap4.filterShader = myFilterShader;
+	sceneDescMap4.simulationEventCallback = &mSimulationEventCallbackMap4;
+	sceneDescMap4.flags |= PxSceneFlag::eENABLE_CCD;
+	sceneDescMap4.staticStructure = PxPruningStructureType::eDYNAMIC_AABB_TREE;
+	sceneDescMap4.dynamicStructure = PxPruningStructureType::eDYNAMIC_AABB_TREE;
+	mMap4Scene = mPhysics->createScene(sceneDescMap4);
+
+	PxPvdSceneClient* pvdClient = mMap2Scene->getScenePvdClient();
 	if (pvdClient) {
 		pvdClient->setScenePvdFlag(PxPvdSceneFlag::eTRANSMIT_CONSTRAINTS, true);
 		pvdClient->setScenePvdFlag(PxPvdSceneFlag::eTRANSMIT_CONTACTS, true);
@@ -63,14 +73,14 @@ PhysXClass::PhysXClass()
 
 	/*PxRigidStatic* groundPlane = PxCreatePlane(*mPhysics, PxPlane(0, 1, 0, 0), *mMaterial);
 	
-	mScene->addActor(*groundPlane);*/
+	mMap2Scene->addActor(*groundPlane);*/
 }
 
 PhysXClass::~PhysXClass()
 {
-	if (mScene) {
-		mScene->release();
-		mScene = NULL;
+	if (mMap2Scene) {
+		mMap2Scene->release();
+		mMap2Scene = NULL;
 	}
 	if (mDispatcher) {
 		mDispatcher->release();
@@ -91,11 +101,14 @@ PhysXClass::~PhysXClass()
 	}
 }
 
-void PhysXClass::stepPhysics(float elapsedTime)
+void PhysXClass::stepPhysics(float elapsedTime,int scene)
 {
-	mScene->simulate(elapsedTime);
-	sceneTwo->simulate(elapsedTime);
-
-	mScene->fetchResults(true);
-	sceneTwo->fetchResults(true);
+	if (scene == 2) {
+		mMap2Scene->simulate(elapsedTime);
+		mMap2Scene->fetchResults(true);
+	}
+	else if (scene == 4) {
+		mMap4Scene->simulate(elapsedTime);
+		mMap4Scene->fetchResults(true);
+	}
 }

@@ -28,7 +28,7 @@ void MySimulationEventCallback::onContact(const PxContactPairHeader& pairHeader,
             if (std::find(removedActors.begin(), removedActors.end(), pairHeader.actors[0]) == removedActors.end())
                 removedActors.emplace_back(pairHeader.actors[0]);
             if (userData1->objType == FilterGroup::eMONSTER) {
-                userData1 -= 1;
+                userData1->hp -= 1;
                 if (userData1->hp <= 0) {
                     if (std::find(removedActors.begin(), removedActors.end(), pairHeader.actors[1]) == removedActors.end())
                         removedActors.emplace_back(pairHeader.actors[1]);
@@ -54,11 +54,13 @@ void MySimulationEventCallback::onContact(const PxContactPairHeader& pairHeader,
 
 void MySimulationEventCallback::onWake(PxActor** actors, PxU32 count)
 {
-	std::lock_guard<std::mutex> l{ containerLock };
-	for (int i = 0; i < count; ++i) {
-		actorContainer.emplace_back(actors[i]);
-	}
-	//std::cout << "container size: " << getContainerSize() << std::endl;
+    if (count < 1) return;
+
+    std::lock_guard<std::mutex> l{ containerLock };
+    for (int i = 0; i < count; ++i) {
+        actorContainer.emplace_back(actors[i]);
+    }
+    //std::cout << "container size: " << getContainerSize() << std::endl;
 }
 
 void MySimulationEventCallback::onSleep(PxActor** actors, PxU32 count)

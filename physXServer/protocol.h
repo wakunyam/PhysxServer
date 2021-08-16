@@ -40,6 +40,7 @@ constexpr char CS_PACKET_HAND_MOVE = 5;
 constexpr char CS_PACKET_HEAD_MOVE = 6;
 constexpr char CS_PACKET_SERVER_HAND_MOVE = 7;
 constexpr char CS_PACKET_CHANGE_MONSTER_STATE = 8;
+constexpr char CS_PACKET_CHANGE_SCENE = 9;
 
 struct sc_packet_login_ok {
 	char size;
@@ -255,5 +256,11 @@ struct cs_packet_change_monster_state {
 	char type;
 	int monster_id;
 	EnemyState state;
+};
+
+struct cs_packet_change_scene {
+	char size;
+	char type;
+	int scene_id;
 };
 #pragma pack(pop)

@@ -18,18 +18,19 @@ public:
 	PxCooking* mCooking = NULL;
 
 	PxDefaultCpuDispatcher* mDispatcher = NULL;
-	PxScene* mScene = NULL;
-	PxScene* sceneTwo = NULL;
+	PxScene* mMap2Scene = NULL;
+	PxScene* mMap4Scene = NULL;
 
 	PxMaterial* mMaterial = NULL;
 
 	PxPvd* mPvd = NULL;
 
-	MySimulationEventCallback mSimulationEventCallback;
+	MySimulationEventCallback mSimulationEventCallbackMap2;
+	MySimulationEventCallback mSimulationEventCallbackMap4;
 
 	static PhysXClass* getInstance();
 	~PhysXClass();
-	void stepPhysics(float elapsedTime);
+	void stepPhysics(float elapsedTime, int scene);
 };
 
 
