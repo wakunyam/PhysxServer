@@ -18,8 +18,11 @@ public:
 	PxCooking* mCooking = NULL;
 
 	PxDefaultCpuDispatcher* mDispatcher = NULL;
+
 	PxScene* mMap2Scene = NULL;
 	PxScene* mMap4Scene = NULL;
+	PxScene* mMap5Scene = NULL;
+	PxScene* mMapFinalScene = NULL;
 
 	PxMaterial* mMaterial = NULL;
 
@@ -27,6 +30,8 @@ public:
 
 	MySimulationEventCallback mSimulationEventCallbackMap2;
 	MySimulationEventCallback mSimulationEventCallbackMap4;
+	MySimulationEventCallback mSimulationEventCallbackMap5;
+	MySimulationEventCallback mSimulationEventCallbackMapFinal;
 
 	static PhysXClass* getInstance();
 	~PhysXClass();

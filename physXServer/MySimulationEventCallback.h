@@ -17,6 +17,8 @@ struct UserData {
 	int hp;
 	int owner_id;
 	FilterGroup objType;
+	bool isPuzzle = false;
+	bool isHand = false;
 };
 
 class MySimulationEventCallback : public PxSimulationEventCallback
@@ -26,10 +28,12 @@ public:
 	std::mutex containerLock;
 	std::vector<PxActor*> removedActors;
 	std::mutex removedActorsLock;
+	int puzzleCount = 0;
+	int gemOwnerId = -1;
 
 	// Implements PxSimulationEventCallback
 	virtual void							onContact(const PxContactPairHeader& pairHeader, const PxContactPair* pairs, PxU32 nbPairs);
-	virtual void							onTrigger(PxTriggerPair* pairs, PxU32 count) {};
+	virtual void							onTrigger(PxTriggerPair* pairs, PxU32 count);
 	virtual void							onConstraintBreak(PxConstraintInfo*, PxU32) {}
 	virtual void							onWake(PxActor**, PxU32);
 	virtual void							onSleep(PxActor**, PxU32);

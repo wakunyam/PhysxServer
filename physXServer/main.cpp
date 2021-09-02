@@ -28,8 +28,8 @@ struct OVER_EX {
 };
 
 struct Player {
-	PxController* m_body;
-	float body_rX, body_rY, body_rZ, body_rW;
+	/*PxController* m_body;
+	float body_rX, body_rY, body_rZ, body_rW;*/
 	PxRigidDynamic* m_lHand, * m_rHand;
 	PxFixedJoint* m_lHandJoint = nullptr, * m_rHandJoint = nullptr;
 };
@@ -42,6 +42,8 @@ struct CLIENT {
 	volatile bool conected;
 	Player map2Player;
 	Player map4Player;
+	Player map5Player;
+	Player mapFinalPlayer;
 	HandState m_lHandState, m_rHandState;
 	bool isVR;
 	bool isHost;
@@ -53,10 +55,17 @@ SOCKET g_lSocket;
 OVER_EX g_accept_over;
 PhysXClass* gInstance;
 JsonParser gParser;
-PxRigidDynamic** monsters;
+PxRigidDynamic** map2Monsters;
+PxRigidDynamic** map4Monsters;
+PxRigidDynamic** map5Monsters;
+PxRigidDynamic** mapFinalMonsters;
 
-volatile int nbUserOfMap2 = 0;
-volatile int nbUserOfMap4 = 0;
+bool map2Clear = false;
+
+volatile atomic_int nbUserOfMap2 = 0;
+volatile atomic_int nbUserOfMap4 = 0;
+volatile atomic_int nbUserOfMap5 = 0;
+volatile atomic_int nbUserOfMapFinal = 0;
 
 // 소켓 함수 오류 출력 후 종료
 void err_quit(const char* msg)
@@ -182,18 +191,12 @@ void send_hand_move_packet(int to_client, int id, cs_packet_hand_move* in_p)
 	p.lHand_pX = in_p->lx;
 	p.lHand_pY = in_p->ly;
 	p.lHand_pZ = in_p->lz;
-	p.lHand_rX = in_p->lrx;
-	p.lHand_rY = in_p->lry;
-	p.lHand_rZ = in_p->lrz;
-	p.lHand_rW = in_p->lrw;
+	p.lHandQuat = in_p->lQuat;
 
 	p.rHand_pX = in_p->rx;
 	p.rHand_pY = in_p->ry;
 	p.rHand_pZ = in_p->rz;
-	p.rHand_rX = in_p->rrx;
-	p.rHand_rY = in_p->rry;
-	p.rHand_rZ = in_p->rrz;
-	p.rHand_rW = in_p->rrw;
+	p.rHandQuat = in_p->rQuat;
 
 	if (clients[to_client].conected)
 		send_packet(to_client, &p);
@@ -208,10 +211,7 @@ void send_head_move_packet(int to_client, cs_packet_head_move* in_p)
 	p.x = in_p->x;
 	p.y = in_p->y;
 	p.z = in_p->z;
-	p.rx = in_p->rx;
-	p.ry = in_p->ry;
-	p.rz = in_p->rz;
-	p.rw = in_p->rw;
+	p.quat = in_p->quat;
 
 	if (clients[to_client].conected)
 		send_packet(to_client, &p);
@@ -223,7 +223,7 @@ void send_enter_packet(int to_client, int id)
 	p.id = id;
 	p.size = sizeof(p);
 	p.type = SC_PACKET_ENTER;
-	if (clients[id].scene_id == 2) {
+	/*if (clients[id].scene_id == 2) {
 		PxExtendedVec3 pose = clients[id].map2Player.m_body->getPosition();
 		p.pX = pose.x;
 		p.pY = pose.y;
@@ -243,6 +243,26 @@ void send_enter_packet(int to_client, int id)
 		p.rZ = clients[id].map4Player.body_rZ;
 		p.rW = clients[id].map4Player.body_rW;
 	}
+	else if (clients[id].scene_id == 5) {
+		PxExtendedVec3 pose = clients[id].map5Player.m_body->getPosition();
+		p.pX = pose.x;
+		p.pY = pose.y;
+		p.pZ = pose.z;
+		p.rX = clients[id].map5Player.body_rX;
+		p.rY = clients[id].map5Player.body_rY;
+		p.rZ = clients[id].map5Player.body_rZ;
+		p.rW = clients[id].map5Player.body_rW;
+	}
+	else if (clients[id].scene_id == 6) {
+		PxExtendedVec3 pose = clients[id].mapFinalPlayer.m_body->getPosition();
+		p.pX = pose.x;
+		p.pY = pose.y;
+		p.pZ = pose.z;
+		p.rX = clients[id].mapFinalPlayer.body_rX;
+		p.rY = clients[id].mapFinalPlayer.body_rY;
+		p.rZ = clients[id].mapFinalPlayer.body_rZ;
+		p.rW = clients[id].mapFinalPlayer.body_rW;
+	}*/
 
 	send_packet(to_client, &p);
 }
@@ -263,10 +283,7 @@ void send_object_move_packet_map2()
 		p.pX = t.p.x;
 		p.pY = t.p.y;
 		p.pZ = t.p.z;
-		p.rX = t.q.x;
-		p.rY = t.q.y;
-		p.rZ = t.q.z;
-		p.rW = t.q.w;
+		p.quat.load(t.q.x, t.q.y, t.q.z, t.q.w);
 
 		for (int i = 0; i < CLIENT_NUM; ++i) {
 			if (clients[i].conected)
@@ -292,14 +309,63 @@ void send_object_move_packet_map4()
 		p.pX = t.p.x;
 		p.pY = t.p.y;
 		p.pZ = t.p.z;
-		p.rX = t.q.x;
-		p.rY = t.q.y;
-		p.rZ = t.q.z;
-		p.rW = t.q.w;
+		p.quat.load(t.q.x, t.q.y, t.q.z, t.q.w);
 
 		for (int i = 0; i < CLIENT_NUM; ++i) {
 			if (clients[i].conected)
 				if (clients[i].scene_id == 4)
+					send_packet(i, &p);
+		}
+	}
+}
+
+void send_object_move_packet_map5()
+{
+	vector<PxActor*> copyContainer;
+	//gInstance->mSimulationEventCallbackMap2.containerLock.lock();
+	copy(gInstance->mSimulationEventCallbackMap5.actorContainer.begin(), gInstance->mSimulationEventCallbackMap5.actorContainer.end(), back_inserter(copyContainer));
+	//gInstance->mSimulationEventCallbackMap2.containerLock.unlock();
+	for (auto iter = copyContainer.begin(); iter != copyContainer.end(); ++iter) {
+		sc_packet_object_move p;
+		p.size = sizeof(p);
+		p.type = SC_PACKET_OBJECT_MOVE;
+		p.id = *(int*)(*iter)->userData;
+		//cout << p.id << endl;
+		PxTransform t = reinterpret_cast<PxRigidDynamic*>(*iter)->getGlobalPose();
+		p.pX = t.p.x;
+		p.pY = t.p.y;
+		p.pZ = t.p.z;
+		p.quat.load(t.q.x, t.q.y, t.q.z, t.q.w);
+
+		for (int i = 0; i < CLIENT_NUM; ++i) {
+			if (clients[i].conected)
+				if (clients[i].scene_id == 5)
+					send_packet(i, &p);
+		}
+	}
+}
+
+void send_object_move_packet_mapFinal()
+{
+	vector<PxActor*> copyContainer;
+	//gInstance->mSimulationEventCallbackMap4.containerLock.lock();
+	copy(gInstance->mSimulationEventCallbackMapFinal.actorContainer.begin(), gInstance->mSimulationEventCallbackMapFinal.actorContainer.end(), back_inserter(copyContainer));
+	//gInstance->mSimulationEventCallbackMap4.containerLock.unlock();
+	for (auto iter = copyContainer.begin(); iter != copyContainer.end(); ++iter) {
+		sc_packet_object_move p;
+		p.size = sizeof(p);
+		p.type = SC_PACKET_OBJECT_MOVE;
+		p.id = *(int*)(*iter)->userData;
+		//cout << p.id << endl;
+		PxTransform t = reinterpret_cast<PxRigidDynamic*>(*iter)->getGlobalPose();
+		p.pX = t.p.x;
+		p.pY = t.p.y;
+		p.pZ = t.p.z;
+		p.quat.load(t.q.x, t.q.y, t.q.z, t.q.w);
+
+		for (int i = 0; i < CLIENT_NUM; ++i) {
+			if (clients[i].conected)
+				if (clients[i].scene_id == 6)
 					send_packet(i, &p);
 		}
 	}
@@ -318,7 +384,7 @@ void send_hand_state_packet(int to_client, int id, bool hand, HandState state)
 		send_packet(to_client, &p);
 }
 
-void send_monster_move(int to_client, cs_packet_monster_move* in_p)
+void send_monster_move_map2(int to_client, cs_packet_monster_move* in_p)
 {
 	sc_packet_monster_move p;
 	p.size = sizeof(p);
@@ -327,25 +393,135 @@ void send_monster_move(int to_client, cs_packet_monster_move* in_p)
 	p.pX = in_p->pX;
 	p.pY = in_p->pY;
 	p.pZ = in_p->pZ;
-	p.rX = in_p->rX;
-	p.rY = in_p->rY;
-	p.rZ = in_p->rZ;
-	p.rW = in_p->rW;
+	p.quat = in_p->quat;
 
 	if (clients[to_client].conected)
 		send_packet(to_client, &p);
 }
 
-void send_monster_remove(int id)
+void send_monster_move_map4(int to_client, cs_packet_monster_move* in_p)
+{
+	sc_packet_monster_move p;
+	p.size = sizeof(p);
+	p.type = SC_PACKET_MONSTER_MOVE;
+	p.id = in_p->id;
+	p.pX = in_p->pX;
+	p.pY = in_p->pY;
+	p.pZ = in_p->pZ;
+	p.quat = in_p->quat;
+
+	if (clients[to_client].conected)
+		send_packet(to_client, &p);
+}
+
+void send_monster_move_map5(int to_client, cs_packet_monster_move* in_p)
+{
+	sc_packet_monster_move p;
+	p.size = sizeof(p);
+	p.type = SC_PACKET_MONSTER_MOVE;
+	p.id = in_p->id;
+	p.pX = in_p->pX;
+	p.pY = in_p->pY;
+	p.pZ = in_p->pZ;
+	p.quat = in_p->quat;
+
+	if (clients[to_client].conected)
+		send_packet(to_client, &p);
+}
+
+void send_monster_move_mapFinal(int to_client, cs_packet_monster_move* in_p)
+{
+	sc_packet_monster_move p;
+	p.size = sizeof(p);
+	p.type = SC_PACKET_MONSTER_MOVE;
+	p.id = in_p->id;
+	p.pX = in_p->pX;
+	p.pY = in_p->pY;
+	p.pZ = in_p->pZ;
+	p.quat = in_p->quat;
+
+	if (clients[to_client].conected)
+		send_packet(to_client, &p);
+}
+
+void send_monster_remove_map2(int id)
 {
 	sc_packet_monster_remove p;
 	p.size = sizeof(p);
 	p.type = SC_PACKET_MONSTER_REMOVE;
 	p.id = id;
-	
+
 	for (int i = 0; i < CLIENT_NUM; ++i)
 		if (clients[i].conected)
 			send_packet(i, &p);
+}
+
+void send_monster_remove_map4(int id)
+{
+	sc_packet_monster_remove p;
+	p.size = sizeof(p);
+	p.type = SC_PACKET_MONSTER_REMOVE;
+	p.id = id;
+
+	for (int i = 0; i < CLIENT_NUM; ++i)
+		if (clients[i].conected)
+			send_packet(i, &p);
+}
+
+void send_monster_remove_map5(int id)
+{
+	sc_packet_monster_remove p;
+	p.size = sizeof(p);
+	p.type = SC_PACKET_MONSTER_REMOVE;
+	p.id = id;
+
+	for (int i = 0; i < CLIENT_NUM; ++i)
+		if (clients[i].conected)
+			send_packet(i, &p);
+}
+
+void send_monster_remove_mapFinal(int id)
+{
+	sc_packet_monster_remove p;
+	p.size = sizeof(p);
+	p.type = SC_PACKET_MONSTER_REMOVE;
+	p.id = id;
+
+	for (int i = 0; i < CLIENT_NUM; ++i)
+		if (clients[i].conected)
+			send_packet(i, &p);
+}
+
+void send_map2_clear()
+{
+	sc_packet_map2_clear p;
+	p.size = sizeof(p);
+	p.type = SC_PACKET_MAP2_CLEAR;
+
+	for (int i = 0; i < CLIENT_NUM; ++i) {
+		send_packet(i, &p);
+		map2Clear = true;
+	}
+}
+
+void send_change_scene(int to_client)
+{
+	sc_packet_change_scene p;
+	p.size = sizeof(p);
+	p.type = SC_PACKET_CHANGE_SCENE;
+	
+	send_packet(to_client, &p);
+}
+
+void send_gem_owner(int owner_id)
+{
+	sc_packet_get_gem p;
+	p.size = sizeof(p);
+	p.type = SC_PACKET_GET_GEM;
+	p.owner_id = owner_id;
+
+	for (int i = 0; i < 2; ++i)
+		send_packet(i, &p);
 }
 
 constexpr float bulletSpeed = 350;
@@ -417,6 +593,26 @@ void grabTrigger(int id, cs_packet_grab* in_p)
 						ud->owner_id = id;
 					}
 				}
+				else if (clients[id].scene_id == 6) {
+					PxVec3 dir = clients[id].mapFinalPlayer.m_lHand->getGlobalPose().q.rotate(PxVec3(1, 0, 0));
+					if (gInstance->mMapFinalScene->raycast(clients[id].mapFinalPlayer.m_lHand->getGlobalPose().p + dir * 0.031, dir, 0.05, hit)) {
+						PxRigidActor* blockObject = hit.block.actor;
+						UserData* ud = (UserData*)blockObject->userData;
+						if (ud == nullptr) break;
+						if (ud->objType != FilterGroup::eSTUFF) break;
+						if (ud->owner_id != -1) break;
+						if (blockObject == (PxRigidActor*)clients[id].mapFinalPlayer.m_lHand) break;
+						clients[id].mapFinalPlayer.m_lHandJoint = PxFixedJointCreate(*gInstance->mPhysics,
+							clients[id].mapFinalPlayer.m_lHand,
+							PxTransform(PxVec3(0.03, 0, 0)),
+							blockObject,
+							PxTransform(blockObject->getGlobalPose().q.rotateInv(PxVec3(hit.block.position - blockObject->getGlobalPose().p)),
+								blockObject->getGlobalPose().q.getConjugate()));
+						clients[id].mapFinalPlayer.m_lHandJoint->setConstraintFlag(PxConstraintFlag::eCOLLISION_ENABLED, false);
+						clients[id].mapFinalPlayer.m_lHandJoint->setConstraintFlag(PxConstraintFlag::eVISUALIZATION, true);
+						ud->owner_id = id;
+					}
+				}
 			}
 			else {
 				if (clients[id].scene_id == 2) {
@@ -437,6 +633,16 @@ void grabTrigger(int id, cs_packet_grab* in_p)
 						ud->owner_id = -1;
 						clients[id].map4Player.m_lHandJoint->release();
 						clients[id].map4Player.m_lHandJoint = nullptr;
+					}
+				}
+				else if (clients[id].scene_id == 6) {
+					if (clients[id].mapFinalPlayer.m_lHandJoint) {
+						PxRigidActor* actors[2];
+						clients[id].mapFinalPlayer.m_lHandJoint->getActors(actors[0], actors[1]);
+						UserData* ud = (UserData*)actors[1]->userData;
+						ud->owner_id = -1;
+						clients[id].mapFinalPlayer.m_lHandJoint->release();
+						clients[id].mapFinalPlayer.m_lHandJoint = nullptr;
 					}
 				}
 			}
@@ -497,6 +703,26 @@ void grabTrigger(int id, cs_packet_grab* in_p)
 						ud->owner_id = id;
 					}
 				}
+				else if (clients[id].scene_id == 6) {
+					PxVec3 dir = clients[id].mapFinalPlayer.m_rHand->getGlobalPose().q.rotate(PxVec3(-1, 0, 0));
+					if (gInstance->mMapFinalScene->raycast(clients[id].mapFinalPlayer.m_rHand->getGlobalPose().p + dir * 0.031, dir, 0.05, hit)) {
+						PxRigidActor* blockObject = hit.block.actor;
+						UserData* ud = (UserData*)blockObject->userData;
+						if (ud == nullptr) break;
+						if (ud->objType != FilterGroup::eSTUFF) break;
+						if (ud->owner_id != -1) break;
+						if (blockObject == (PxRigidActor*)clients[id].mapFinalPlayer.m_rHand) break;
+						clients[id].mapFinalPlayer.m_rHandJoint = PxFixedJointCreate(*gInstance->mPhysics,
+							clients[id].mapFinalPlayer.m_rHand,
+							PxTransform(PxVec3(-0.03, 0, 0)),
+							blockObject,
+							PxTransform(blockObject->getGlobalPose().q.rotateInv(PxVec3(hit.block.position - blockObject->getGlobalPose().p)),
+								blockObject->getGlobalPose().q.getConjugate()));
+						clients[id].mapFinalPlayer.m_rHandJoint->setConstraintFlag(PxConstraintFlag::eCOLLISION_ENABLED, false);
+						clients[id].mapFinalPlayer.m_rHandJoint->setConstraintFlag(PxConstraintFlag::eVISUALIZATION, true);
+						ud->owner_id = id;
+					}
+				}
 			}
 			else {
 				if (clients[id].scene_id == 2) {
@@ -519,6 +745,16 @@ void grabTrigger(int id, cs_packet_grab* in_p)
 						clients[id].map4Player.m_rHandJoint = nullptr;
 					}
 				}
+				else if (clients[id].scene_id == 6) {
+					if (clients[id].mapFinalPlayer.m_rHandJoint) {
+						PxRigidActor* actors[2];
+						clients[id].mapFinalPlayer.m_rHandJoint->getActors(actors[0], actors[1]);
+						UserData* ud = (UserData*)actors[1]->userData;
+						ud->owner_id = -1;
+						clients[id].mapFinalPlayer.m_rHandJoint->release();
+						clients[id].mapFinalPlayer.m_rHandJoint = nullptr;
+					}
+				}
 			}
 			break;
 		}
@@ -528,10 +764,21 @@ void grabTrigger(int id, cs_packet_grab* in_p)
 			}
 			break;
 		}
-		}	
+		}
 		break;
 	}
 	}
+}
+
+void createGemMap4()
+{
+	PxShape* triggerShape = gInstance->mPhysics->createShape(PxBoxGeometry(0.01982967 * 0.5 * 100 * 0.15, 0.01105957 * 0.5 * 100 * 0.15, 0.01982964 * 0.5 * 100 * 0.15), *gInstance->mMaterial);
+	triggerShape->setFlag(PxShapeFlag::eSIMULATION_SHAPE, false);
+	triggerShape->setFlag(PxShapeFlag::eTRIGGER_SHAPE, true);
+	triggerShape->setFlag(PxShapeFlag::eVISUALIZATION, true);
+
+	PxRigidStatic* trigger = PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-40.85, 0.388194, -8.760126)), *triggerShape);
+	gInstance->mMap4Scene->addActor(*trigger);
 }
 
 void process_packet(int id)
@@ -540,7 +787,7 @@ void process_packet(int id)
 	//cout << "recv " << (int)p_type << endl;
 	switch (p_type) {
 	case CS_PACKET_LOGIN: {
-		send_login_ok_packet(id);
+		//send_login_ok_packet(id);
 		clients[id].conected = true;
 		/*cs_packet_login* p = reinterpret_cast<cs_packet_login*>(clients[id].m_packet_start);
 		clients[id].isVR = p->isVR;*/
@@ -565,6 +812,39 @@ void process_packet(int id)
 	case CS_PACKET_GRAB: {
 		cs_packet_grab* p = reinterpret_cast<cs_packet_grab*>(clients[id].m_packet_start);
 		grabTrigger(id, p);
+
+		if (p->grab) {
+			switch (p->hand) {
+			case LEFT_HAND: {
+				if (clients[id].m_lHandState == HandState::eGUN) {
+					sc_packet_grab gp;
+					gp.size = sizeof(gp);
+					gp.type = SC_PACKET_GRAB;
+					gp.id = id;
+					gp.hand = p->hand;
+					gp.grab = p->grab;
+
+					if (clients[1 - id].scene_id == clients[id].scene_id)
+						send_packet(1 - id, &gp);
+				}
+				break;
+			}
+			case RIGHT_HAND: {
+				if (clients[id].m_rHandState == HandState::eGUN) {
+					sc_packet_grab gp;
+					gp.size = sizeof(gp);
+					gp.type = SC_PACKET_GRAB;
+					gp.id = id;
+					gp.hand = p->hand;
+					gp.grab = p->grab;
+
+					if (clients[1 - id].scene_id == clients[id].scene_id)
+						send_packet(1 - id, &gp);
+				}
+				break;
+			}
+			}
+		}
 		break;
 	}
 	case CS_PACKET_CHANGE_HAND_STATE: {
@@ -582,15 +862,27 @@ void process_packet(int id)
 	}
 	case CS_PACKET_MONSTER_MOVE: {
 		cs_packet_monster_move* p = reinterpret_cast<cs_packet_monster_move*>(clients[id].m_packet_start);
-		if (monsters[p->id] != nullptr) {
+		if (clients[1 - id].conected)
+			if (clients[1 - id].scene_id == clients[id].scene_id) {
+				PxQuat quat;
+				p->quat.save(quat.x, quat.y, quat.z, quat.w);
+				switch (clients[id].scene_id) {
+				case 2: {
+					map2Monsters[p->id]->setGlobalPose(PxTransform(PxVec3(p->pX, p->pY, p->pZ), quat));
+					send_monster_move_map2(1 - id, p);
+					break;
+				}
+				case 4: {
+					map4Monsters[p->id]->setGlobalPose(PxTransform(PxVec3(p->pX, p->pY, p->pZ), quat));
+					send_monster_move_map4(1 - id, p);
+					break;
+				}
+				case 6: {
+					break;
+				}
+				}
+			}
 
-			//monsters[p->id]->setKinematicTarget(PxTransform(PxVec3(p->pX, p->pY, p->pZ), PxQuat(p->rX, p->rY, p->rZ, p->rW)));
-			monsters[p->id]->setGlobalPose(PxTransform(PxVec3(p->pX, p->pY, p->pZ), PxQuat(p->rX, p->rY, p->rZ, p->rW)));
-
-			if (clients[1 - id].conected)
-				if (clients[1 - id].scene_id == clients[id].scene_id)
-					send_monster_move(1 - id, p);
-		}
 		break;
 	}
 	case CS_PACKET_HAND_MOVE: {
@@ -609,14 +901,22 @@ void process_packet(int id)
 	}
 	case CS_PACKET_SERVER_HAND_MOVE: {
 		cs_packet_server_hand_move* p = reinterpret_cast<cs_packet_server_hand_move*>(clients[id].m_packet_start);
+		PxTransform lt = p->getLHandPose();
+		p->lHandQuat.save(lt.q.x, lt.q.y, lt.q.z, lt.q.w);
+		PxTransform rt = p->getRHandPose();
+		p->rHandQuat.save(rt.q.x, rt.q.y, rt.q.z, rt.q.w);
 
 		if (clients[id].scene_id == 2) {
-			clients[id].map2Player.m_lHand->setKinematicTarget(p->getLHandPose());
-			clients[id].map2Player.m_rHand->setKinematicTarget(p->getRHandPose());
+			clients[id].map2Player.m_lHand->setKinematicTarget(lt);
+			clients[id].map2Player.m_rHand->setKinematicTarget(rt);
 		}
 		else if (clients[id].scene_id == 4) {
-			clients[id].map4Player.m_lHand->setKinematicTarget(p->getLHandPose());
-			clients[id].map4Player.m_rHand->setKinematicTarget(p->getRHandPose());
+			clients[id].map4Player.m_lHand->setKinematicTarget(lt);
+			clients[id].map4Player.m_rHand->setKinematicTarget(rt);
+		}
+		else if (clients[id].scene_id == 6) {
+			clients[id].mapFinalPlayer.m_lHand->setKinematicTarget(lt);
+			clients[id].mapFinalPlayer.m_rHand->setKinematicTarget(rt);
 		}
 		break;
 	}
@@ -629,7 +929,7 @@ void process_packet(int id)
 		packet.monster_id = p->monster_id;
 		packet.state = p->state;
 
-		if(clients[1-id].conected)
+		if (clients[1 - id].conected)
 			send_packet(1 - id, &packet);
 	}
 	case CS_PACKET_CHANGE_SCENE: {
@@ -639,7 +939,6 @@ void process_packet(int id)
 		case 0: {
 			clients[id].scene_id = p->scene_id;
 			if (p->scene_id == 2) ++nbUserOfMap2;
-			else if (p->scene_id == 4) ++nbUserOfMap4;
 			break;
 		}
 		case 2: {
@@ -660,6 +959,8 @@ void process_packet(int id)
 			switch (p->scene_id) {
 			case 2: {
 				++nbUserOfMap2;
+				if (map2Clear)
+					send_map2_clear();
 				break;
 			}
 			}
@@ -668,8 +969,51 @@ void process_packet(int id)
 				send_enter_packet(1 - id, id);*/
 			break;
 		}
+		case 5: {
+			--nbUserOfMap5;
+			switch (p->scene_id) {
+			case 2: {
+				++nbUserOfMap2;
+				if (map2Clear)
+					send_map2_clear();
+				break;
+			}
+			}
+			clients[id].scene_id = p->scene_id;
+			break;
+		}
+		case 6: {
+			--nbUserOfMapFinal;
+			switch (p->scene_id) {
+			case 4: {
+				++nbUserOfMap4;
+				break;
+			}
+			}
+			clients[id].scene_id = p->scene_id;
+		}
 		}
 
+		if (clients[0].scene_id != clients[1].scene_id) {
+			send_change_scene(1 - id);
+		}
+		break;
+	}
+	case CS_PACKET_Y_POS: {
+		cs_packet_y_pos* p = reinterpret_cast<cs_packet_y_pos*>(clients[id].m_packet_start);
+
+		if (clients[1 - id].scene_id == clients[id].scene_id) {
+			sc_packet_y_pos yp;
+			yp.size = sizeof(yp);
+			yp.type = SC_PACKET_Y_POS;
+			yp.y = p->y;
+
+			send_packet(1 - id, &yp);
+		}
+		break;
+	}
+	case CS_PACKET_MAP4_CLEAR: {
+		createGemMap4();
 		break;
 	}
 	default:
@@ -831,7 +1175,7 @@ PxShape* createBV33TriangleMesh(PxU32 numVertices, const PxVec3* vertices, PxU32
 	return nullptr;
 }
 
-PxShape* createTriangleMesh(const char* fileName,PxVec3 scale)
+PxShape* createTriangleMesh(const char* fileName, PxVec3 scale)
 {
 	PxU32 numVertices;
 	PxVec3* vertices = nullptr;
@@ -841,7 +1185,7 @@ PxShape* createTriangleMesh(const char* fileName,PxVec3 scale)
 	gParser.parseTriangleMeshFile(fileName, &numVertices, vertices, &numTriangles, indices, scale);
 
 	PxShape* shape = createBV33TriangleMesh(numVertices, vertices, numTriangles, indices, false, false, false, false, false);
-	
+
 	delete[] vertices;
 	delete[] indices;
 
@@ -952,6 +1296,7 @@ void createObjectMap2()
 	ud9->id = 9;
 	ud9->owner_id = -1;
 	ud9->objType = FilterGroup::eSTUFF;
+	ud9->isPuzzle = true;
 	puzzle1->userData = ud9;
 	gInstance->mMap2Scene->addActor(*puzzle1);
 
@@ -961,6 +1306,7 @@ void createObjectMap2()
 	ud10->id = 10;
 	ud10->owner_id = -1;
 	ud10->objType = FilterGroup::eSTUFF;
+	ud10->isPuzzle = true;
 	puzzle2->userData = ud10;
 	gInstance->mMap2Scene->addActor(*puzzle2);
 
@@ -970,6 +1316,7 @@ void createObjectMap2()
 	ud11->id = 11;
 	ud11->owner_id = -1;
 	ud11->objType = FilterGroup::eSTUFF;
+	ud11->isPuzzle = true;
 	puzzle3->userData = ud11;
 	gInstance->mMap2Scene->addActor(*puzzle3);
 
@@ -979,6 +1326,7 @@ void createObjectMap2()
 	ud12->id = 12;
 	ud12->owner_id = -1;
 	ud12->objType = FilterGroup::eSTUFF;
+	ud12->isPuzzle = true;
 	puzzle4->userData = ud12;
 	gInstance->mMap2Scene->addActor(*puzzle4);
 
@@ -988,6 +1336,7 @@ void createObjectMap2()
 	ud13->id = 13;
 	ud13->owner_id = -1;
 	ud13->objType = FilterGroup::eSTUFF;
+	ud13->isPuzzle = true;
 	puzzle5->userData = ud13;
 	gInstance->mMap2Scene->addActor(*puzzle5);
 
@@ -997,6 +1346,7 @@ void createObjectMap2()
 	ud14->id = 14;
 	ud14->owner_id = -1;
 	ud14->objType = FilterGroup::eSTUFF;
+	ud14->isPuzzle = false;
 	puzzle6->userData = ud14;
 	gInstance->mMap2Scene->addActor(*puzzle6);
 
@@ -1006,6 +1356,24 @@ void createObjectMap2()
 	puzzleHintShape1->release();
 	puzzleHintShape2->release();
 	puzzleShape->release();
+
+	PxShape* triggerShape = gInstance->mPhysics->createShape(PxBoxGeometry(0.2 * 0.5, 0.2 * 0.5, 0.2 * 0.5), *gInstance->mMaterial);
+	triggerShape->setFlag(PxShapeFlag::eSIMULATION_SHAPE, false);
+	triggerShape->setFlag(PxShapeFlag::eTRIGGER_SHAPE, true);
+	triggerShape->setFlag(PxShapeFlag::eVISUALIZATION, true);
+
+	vector<PxRigidStatic*> triggers;
+	triggers.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-55.279980, -0.808904, 13.154420)), *triggerShape));
+	triggers.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-60.280010, -0.862321, 15.274410)), *triggerShape));
+	triggers.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-59.940090, -0.840731, 6.824402)), *triggerShape));
+	triggers.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-49.420250, -0.781461, 9.964417)), *triggerShape));
+	triggers.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-51.360230, -0.790545, 18.844420)), *triggerShape));
+	for (auto iter = triggers.begin(); iter != triggers.end(); ++iter) {
+		gInstance->mMap2Scene->addActor(**iter);
+	}
+
+	/*PxRigidStatic* trigger = PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-55.3, -0.8, 13.2)), *triggerShape);
+	gInstance->mMap2Scene->addActor(*trigger);*/
 }
 
 void createMonsterMap2()
@@ -1018,51 +1386,51 @@ void createMonsterMap2()
 	skeletonShape->setLocalPose(PxTransform(PxVec3(0, 8 * 0.15, 0)));
 	setupFiltering(skeletonShape, FilterGroup::eMONSTER, FilterGroup::eBULLET);
 
-	monsters = new PxRigidDynamic * [4];
+	map2Monsters = new PxRigidDynamic * [4];
 
-	monsters[0] = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(0, 0, 0)), *scorpionShape, 500);
-	//monsters[0]->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
-	monsters[0]->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
+	map2Monsters[0] = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(0, 0, 0)), *scorpionShape, 500);
+	//map2Monsters[0]->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
+	map2Monsters[0]->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
 	UserData* ud0 = new UserData();
 	ud0->id = 0;
 	ud0->owner_id = -1;
 	ud0->objType = FilterGroup::eMONSTER;
 	ud0->hp = 2;
-	monsters[0]->userData = ud0;
-	gInstance->mMap2Scene->addActor(*monsters[0]);
+	map2Monsters[0]->userData = ud0;
+	gInstance->mMap2Scene->addActor(*map2Monsters[0]);
 
-	monsters[1] = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(0, 0, 0)), *skeletonShape, 500);
-	//monsters[1]->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
-	monsters[1]->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
+	map2Monsters[1] = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(0, 0, 0)), *skeletonShape, 500);
+	//map2Monsters[1]->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
+	map2Monsters[1]->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
 	UserData* ud1 = new UserData();
 	ud1->id = 1;
 	ud1->owner_id = -1;
 	ud1->objType = FilterGroup::eMONSTER;
 	ud1->hp = 2;
-	monsters[1]->userData = ud1;
-	gInstance->mMap2Scene->addActor(*monsters[1]);
+	map2Monsters[1]->userData = ud1;
+	gInstance->mMap2Scene->addActor(*map2Monsters[1]);
 
-	monsters[2] = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(0, 0, 0)), *skeletonShape, 500);
-	//monsters[2]->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
-	monsters[2]->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
+	map2Monsters[2] = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(0, 0, 0)), *skeletonShape, 500);
+	//map2Monsters[2]->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
+	map2Monsters[2]->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
 	UserData* ud2 = new UserData();
 	ud2->id = 2;
 	ud2->owner_id = -1;
 	ud2->objType = FilterGroup::eMONSTER;
 	ud2->hp = 2;
-	monsters[2]->userData = ud2;
-	gInstance->mMap2Scene->addActor(*monsters[2]);
+	map2Monsters[2]->userData = ud2;
+	gInstance->mMap2Scene->addActor(*map2Monsters[2]);
 
-	monsters[3] = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(0, 0, 0)), *scorpionShape, 500);
-	//monsters[3]->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
-	monsters[3]->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
+	map2Monsters[3] = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(0, 0, 0)), *scorpionShape, 500);
+	//map2Monsters[3]->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
+	map2Monsters[3]->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
 	UserData* ud3 = new UserData();
 	ud3->id = 3;
 	ud3->owner_id = -1;
 	ud3->objType = FilterGroup::eMONSTER;
 	ud3->hp = 2;
-	monsters[3]->userData = ud3;
-	gInstance->mMap2Scene->addActor(*monsters[3]);
+	map2Monsters[3]->userData = ud3;
+	gInstance->mMap2Scene->addActor(*map2Monsters[3]);
 }
 
 void createEnvironmentMap2()
@@ -1271,6 +1639,36 @@ void createObjectMap4()
 	ud0->owner_id = -1;
 	mirror0->userData = ud0;
 	gInstance->mMap4Scene->addActor(*mirror0);
+
+	PxRigidDynamic* mirror1 = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(-2.50000, 1.86, 3.030000)), *mirrorShape, 5);
+	mirror1->setActorFlag(PxActorFlag::eSEND_SLEEP_NOTIFIES, true);
+	UserData* ud1 = new UserData();
+	ud1->id = 1;
+	ud1->objType = FilterGroup::eSTUFF;
+	ud1->owner_id = -1;
+	mirror1->userData = ud1;
+	gInstance->mMap4Scene->addActor(*mirror1);
+}
+
+void createMonsterMap4()
+{
+	PxShape* skeletonShape = gInstance->mPhysics->createShape(PxBoxGeometry(3.5 * 0.5 * 0.15, 15 * 0.5 * 0.15, 3.5 * 0.5 * 0.15), *gInstance->mMaterial);
+	skeletonShape->setLocalPose(PxTransform(PxVec3(0, 8 * 0.15, 0)));
+	setupFiltering(skeletonShape, FilterGroup::eMONSTER, FilterGroup::eBULLET);
+
+	map4Monsters = new PxRigidDynamic * [1];
+	map4Monsters[0] = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(0, 0, 0)), *skeletonShape, 500);
+	//map2Monsters[0]->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
+	map4Monsters[0]->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
+	UserData* ud0 = new UserData();
+	ud0->id = 0;
+	ud0->owner_id = -1;
+	ud0->objType = FilterGroup::eMONSTER;
+	ud0->hp = 2;
+	map4Monsters[0]->userData = ud0;
+	gInstance->mMap4Scene->addActor(*map4Monsters[0]);
+
+
 }
 
 void createEnvironmentMap4()
@@ -1324,7 +1722,7 @@ void createEnvironmentMap4()
 
 	PxShape* lowWallShape = gInstance->mPhysics->createShape(PxBoxGeometry(9.993656 * 23.69504 * 0.015, 3.502743 * 23.69504 * 0.015, 2.433009 * 23.69504 * 0.015), *gInstance->mMaterial);
 	setupFiltering(lowWallShape, FilterGroup::eBACKGROUND, FilterGroup::eBULLET);
-	PxRigidStatic* lowWall = PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-41.284250, -1.186249, -8.757929),PxQuat(0.000000, 0.707107, 0.000000, 0.707107)), *lowWallShape);
+	PxRigidStatic* lowWall = PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-41.284250, -1.186249, -8.757929), PxQuat(0.000000, 0.707107, 0.000000, 0.707107)), *lowWallShape);
 	UserData* lwud = new UserData();
 	lwud->objType = FilterGroup::eBACKGROUND;
 	lowWall->userData = lwud;
@@ -1426,11 +1824,316 @@ void createEnvironmentMap4()
 
 	PxShape* pillarShape = gInstance->mPhysics->createShape(PxBoxGeometry(5.476431 * 0.15, 3.681873 * 0.15, 5.483719 * 0.15), *gInstance->mMaterial);
 	setupFiltering(pillarShape, FilterGroup::eBACKGROUND, FilterGroup::eBULLET);
-	PxRigidStatic* pillar = PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-0.379687, 1.234654, 2.939684)), *pillarShape);
-	UserData* pillarud = new UserData();
-	pillarud->objType = FilterGroup::eBACKGROUND;
-	pillar->userData = pillarud;
-	gInstance->mMap4Scene->addActor(*pillar);
+	PxRigidStatic* pillar0 = PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-0.379687, 1.234654, 2.939684)), *pillarShape);
+	UserData* pillar0ud = new UserData();
+	pillar0ud->objType = FilterGroup::eBACKGROUND;
+	pillar0->userData = pillar0ud;
+	gInstance->mMap4Scene->addActor(*pillar0);
+
+	PxRigidStatic* pillar1 = PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-2.509687, 1.234654, 2.939684)), *pillarShape);
+	UserData* pillar1ud = new UserData();
+	pillar1ud->objType = FilterGroup::eBACKGROUND;
+	pillar1->userData = pillar1ud;
+	gInstance->mMap4Scene->addActor(*pillar1);
+}
+
+void createObjectMap5()
+{
+	PxShape* mirrorShape = gInstance->mPhysics->createShape(PxBoxGeometry(5.5 * 0.5 * 0.2, 0.5 * 0.5 * 0.2, 5.5 * 0.5 * 0.2), *gInstance->mMaterial);
+	setupFiltering(mirrorShape, FilterGroup::eSTUFF, FilterGroup::eBULLET);
+	PxRigidDynamic* mirror0 = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(-0.410000, 1.833001, 3.030000)), *mirrorShape, 5);
+	mirror0->setActorFlag(PxActorFlag::eSEND_SLEEP_NOTIFIES, true);
+	UserData* ud0 = new UserData();
+	ud0->id = 0;
+	ud0->objType = FilterGroup::eSTUFF;
+	ud0->owner_id = -1;
+	mirror0->userData = ud0;
+	gInstance->mMap4Scene->addActor(*mirror0);
+
+	PxRigidDynamic* mirror1 = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(-2.50000, 1.86, 3.030000)), *mirrorShape, 5);
+	mirror1->setActorFlag(PxActorFlag::eSEND_SLEEP_NOTIFIES, true);
+	UserData* ud1 = new UserData();
+	ud1->id = 1;
+	ud1->objType = FilterGroup::eSTUFF;
+	ud1->owner_id = -1;
+	mirror1->userData = ud1;
+	gInstance->mMap4Scene->addActor(*mirror1);
+}
+
+void createGemMap5()
+{
+	PxShape* triggerShape = gInstance->mPhysics->createShape(PxBoxGeometry(0.01982967 * 0.5 * 100 * 0.15, 0.01105957 * 0.5 * 100 * 0.15, 0.01982964 * 0.5 * 100 * 0.15), *gInstance->mMaterial);
+	triggerShape->setFlag(PxShapeFlag::eSIMULATION_SHAPE, false);
+	triggerShape->setFlag(PxShapeFlag::eTRIGGER_SHAPE, true);
+	triggerShape->setFlag(PxShapeFlag::eVISUALIZATION, true);
+
+	PxRigidStatic* trigger = PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-40.85, 0.388194, -8.760126)), *triggerShape);
+	gInstance->mMap4Scene->addActor(*trigger);
+}
+
+void createMonsterMap5()
+{
+	PxShape* skeletonShape = gInstance->mPhysics->createShape(PxBoxGeometry(3.5 * 0.5 * 0.15, 15 * 0.5 * 0.15, 3.5 * 0.5 * 0.15), *gInstance->mMaterial);
+	skeletonShape->setLocalPose(PxTransform(PxVec3(0, 8 * 0.15, 0)));
+	setupFiltering(skeletonShape, FilterGroup::eMONSTER, FilterGroup::eBULLET);
+
+	map4Monsters = new PxRigidDynamic * [1];
+	map4Monsters[0] = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(0, 0, 0)), *skeletonShape, 500);
+	//map2Monsters[0]->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
+	map4Monsters[0]->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
+	UserData* ud0 = new UserData();
+	ud0->id = 0;
+	ud0->owner_id = -1;
+	ud0->objType = FilterGroup::eMONSTER;
+	ud0->hp = 2;
+	map4Monsters[0]->userData = ud0;
+	gInstance->mMap4Scene->addActor(*map4Monsters[0]);
+
+
+}
+
+void createEnvironmentMap5()
+{
+	PxShape* floor = gInstance->mPhysics->createShape(PxBoxGeometry(3.758223 * 0.687897, 0.718908 * 0.687897, 4.980401 * 0.6878971), *gInstance->mMaterial);
+	setupFiltering(floor, FilterGroup::eBACKGROUND, FilterGroup::eBULLET);
+	vector<PxRigidStatic*> floors;
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-31.277690, -0.754556, 35.854960), PxQuat(0.000000, 0.000000, 0.000000, 1.000000)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-32.087690, -0.754556, 29.794960), PxQuat(0.000000, 0.000000, 0.000000, 1.000000)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-52.238680, -0.764556, 24.097650), PxQuat(0.000000, -0.608761, 0.000000, 0.793353)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-56.598680, -0.774556, 25.457650), PxQuat(0.000000, -0.608761, 0.000000, 0.793353)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-15.707440, -0.884556, 18.799020), PxQuat(0.000000, 0.812529, 0.000000, 0.582921)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-10.777440, -0.824556, 16.299020), PxQuat(0.000000, 0.812529, 0.000000, 0.582921)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-33.637700, -0.754556, 11.704960), PxQuat(0.000000, 0.000000, 0.000000, 1.000000)), *floor));
+	floors.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-33.237690, -0.904556, 6.624957), PxQuat(0.000000, 0.000000, 0.000000, 1.000000)), *floor));
+	for (auto i = floors.begin(); i != floors.end(); ++i) {
+		UserData* ud = new UserData();
+		ud->objType = FilterGroup::eBACKGROUND;
+		(*i)->userData = ud;
+		gInstance->mMap4Scene->addActor(**i);
+	}
+	floor->release();
+
+	PxShape* highWall = gInstance->mPhysics->createShape(PxBoxGeometry(7.057033 * 0.35, 6.53896 * 0.35, 1.202788 * 0.35), *gInstance->mMaterial);
+	setupFiltering(highWall, FilterGroup::eBACKGROUND, FilterGroup::eBULLET);
+	vector<PxRigidStatic*> highWalls;
+	highWalls.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-36.115550, 1.989806, 63.202080), PxQuat(0.000000, 0.000000, 0.000000, 1.000000)), *highWall));
+	highWalls.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-26.970700, 1.989806, 62.759090), PxQuat(0.000000, 0.072980, 0.000000, 0.997333)), *highWall));
+	highWalls.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-28.597920, 1.530691, 35.119540), PxQuat(0.000000, 0.707107, 0.000000, 0.707107)), *highWall));
+	highWalls.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-28.597920, 1.530692, 30.449550), PxQuat(0.000000, 0.707107, 0.000000, 0.707107)), *highWall));
+	highWalls.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-34.417920, 1.530691, 35.279550), PxQuat(0.000000, 0.707107, 0.000000, 0.707107)), *highWall));
+	highWalls.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-34.417920, 1.530692, 30.609550), PxQuat(0.000000, 0.707107, 0.000000, 0.707107)), *highWall));
+	highWalls.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-25.237920, 1.590695, 14.419550), PxQuat(0.000000, 0.707107, 0.000000, 0.707107)), *highWall));
+	highWalls.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-25.237920, 5.830697, 14.419550), PxQuat(0.000000, 0.707107, 0.000000, 0.707107)), *highWall));
+	highWalls.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-19.037920, 1.590693, 14.409550), PxQuat(0.000000, 0.707107, 0.000000, 0.707107)), *highWall));
+	for (auto i = highWalls.begin(); i != highWalls.end(); ++i) {
+		UserData* ud = new UserData();
+		ud->objType = FilterGroup::eBACKGROUND;
+		(*i)->userData = ud;
+		gInstance->mMap4Scene->addActor(**i);
+	}
+	highWall->release();
+
+	PxShape* cubeShape = gInstance->mPhysics->createShape(PxBoxGeometry(1 * 0.5 * 600.0001 * 0.015 * 2, 0.1 * 0.5 * 33.33334 * 0.015 * 2, 1 * 0.5 * 580.0001 * 0.015 * 2), *gInstance->mMaterial);
+	setupFiltering(cubeShape, FilterGroup::eBACKGROUND, FilterGroup::eBULLET);
+	PxRigidStatic* cube = PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-33.250000, -0.570000, -5.390001)), *cubeShape);
+	UserData* cubeud = new UserData();
+	cubeud->objType = FilterGroup::eBACKGROUND;
+	cube->userData = cubeud;
+	gInstance->mMap4Scene->addActor(*cube);
+
+	PxShape* lowWallShape = gInstance->mPhysics->createShape(PxBoxGeometry(9.993656 * 23.69504 * 0.015, 3.502743 * 23.69504 * 0.015, 2.433009 * 23.69504 * 0.015), *gInstance->mMaterial);
+	setupFiltering(lowWallShape, FilterGroup::eBACKGROUND, FilterGroup::eBULLET);
+	PxRigidStatic* lowWall = PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-41.284250, -1.186249, -8.757929), PxQuat(0.000000, 0.707107, 0.000000, 0.707107)), *lowWallShape);
+	UserData* lwud = new UserData();
+	lwud->objType = FilterGroup::eBACKGROUND;
+	lowWall->userData = lwud;
+	gInstance->mMap4Scene->addActor(*lowWall);
+
+	PxShape* pCube004Shape = createTriangleMesh("meshData\\pCube004MeshData.json", PxVec3(3.f / 5, 3.f / 5, 3.f / 5));
+	setupFiltering(pCube004Shape, FilterGroup::eBACKGROUND, FilterGroup::eBULLET);
+	PxShape* pCube009Shape = createTriangleMesh("meshData\\pCube009MeshData.json", PxVec3(1.0369 * 3.f / 5, 3.f / 5, 3.f / 5));
+	setupFiltering(pCube009Shape, FilterGroup::eBACKGROUND, FilterGroup::eBULLET);
+	PxShape* pCube012Shape = createTriangleMesh("meshData\\pCube012MeshData.json", PxVec3(3.f / 5, 3.f / 5, 3.f / 5));
+	setupFiltering(pCube012Shape, FilterGroup::eBACKGROUND, FilterGroup::eBULLET);
+	PxShape* pCube013Shape = createTriangleMesh("meshData\\pCube013MeshData.json", PxVec3(3.f / 5, 3.f / 5, 3.f / 5));
+	setupFiltering(pCube013Shape, FilterGroup::eBACKGROUND, FilterGroup::eBULLET);
+	PxShape* pCube014Shape = createTriangleMesh("meshData\\pCube014MeshData.json", PxVec3(3.f / 5, 3.f / 5, 3.f / 5));
+	setupFiltering(pCube014Shape, FilterGroup::eBACKGROUND, FilterGroup::eBULLET);
+	PxShape* pCube015Shape0 = createTriangleMesh("meshData\\pCube015MeshData.json", PxVec3(3.f / 5, 3.f / 5, 3.f / 5));
+	setupFiltering(pCube015Shape0, FilterGroup::eBACKGROUND, FilterGroup::eBULLET);
+	PxShape* pCube015Shape1 = createTriangleMesh("meshData\\pCube015MeshData.json", PxVec3(3.f / 5, 1.09 * 3.f / 5, 3.f / 5));
+	setupFiltering(pCube015Shape1, FilterGroup::eBACKGROUND, FilterGroup::eBULLET);
+	PxShape* pCube015Shape2 = createTriangleMesh("meshData\\pCube015MeshData.json", PxVec3(3.f / 5, 1.1122 * 3.f / 5, 1.1539 * 3.f / 5));
+	setupFiltering(pCube015Shape2, FilterGroup::eBACKGROUND, FilterGroup::eBULLET);
+	PxShape* pCube016Shape = createTriangleMesh("meshData\\pCube016MeshData.json", PxVec3(3.f / 5, 3.f / 5, 3.f / 5));
+	setupFiltering(pCube016Shape, FilterGroup::eBACKGROUND, FilterGroup::eBULLET);
+	PxShape* pCube017Shape = createTriangleMesh("meshData\\pCube017MeshData.json", PxVec3(3.f / 5, 3.f / 5, 3.f / 5));
+	setupFiltering(pCube017Shape, FilterGroup::eBACKGROUND, FilterGroup::eBULLET);
+	vector<PxRigidStatic*> pCubes;
+	pCubes.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-29.450000, -0.520000, -8.680001), PxQuat(0, 0, 0, 1)), *pCube004Shape));
+	pCubes.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-37.740000, -0.520000, -8.680003), PxQuat(0, 0, 0, 1)), *pCube004Shape));
+	pCubes.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-33.484640, -0.520000, -0.310000), PxQuat(0, 0, 0, 1)), *pCube009Shape));
+	pCubes.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-33.440000, -0.520000, -0.310000), PxQuat(0, 0, 0, 1)), *pCube012Shape));
+	pCubes.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-29.400000, -0.520000, -8.700000), PxQuat(0, 0, 0, 1)), *pCube013Shape));
+	pCubes.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-37.610000, -0.520000, -8.700000), PxQuat(0, 0, 0, 1)), *pCube013Shape));
+	pCubes.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-40.990000, -0.520000, -2.060000), PxQuat(0.000000, 1.000000, 0.000000, 0.000000)), *pCube013Shape));
+	pCubes.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-29.530000, -0.520000, -0.240000), PxQuat(0, 0, 0, 1)), *pCube014Shape));
+	pCubes.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-29.530000, -0.520000, -8.340001), PxQuat(0, 0, 0, 1)), *pCube014Shape));
+	pCubes.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-29.510000, -0.520000, -0.310000), PxQuat(0, 0, 0, 1)), *pCube015Shape0));
+	pCubes.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-25.300000, -0.520000, -1.880000), PxQuat(0.000000, -0.707107, 0.000000, 0.707107)), *pCube015Shape0));
+	pCubes.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-29.510000, -0.520000, -8.530000), PxQuat(0, 0, 0, 1)), *pCube015Shape0));
+	pCubes.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-37.290000, 8.419999, -0.545597), PxQuat(0.000000, 0.000000, 0.713440, -0.700716)), *pCube015Shape1));
+	pCubes.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-37.250000, 8.419999, -4.415597), PxQuat(0.000000, 0.000000, 0.713440, -0.700716)), *pCube015Shape1));
+	pCubes.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-37.190000, 8.419999, -8.435598), PxQuat(0.000000, 0.000000, 0.713440, -0.700716)), *pCube015Shape1));
+	pCubes.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-28.320000, 8.260004, -0.545597), PxQuat(0.000000, 0.000000, 0.713440, -0.700716)), *pCube015Shape1));
+	pCubes.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-28.280000, 8.260005, -4.415597), PxQuat(0.000000, 0.000000, 0.713440, -0.700716)), *pCube015Shape1));
+	pCubes.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-28.220000, 8.260005, -8.435597), PxQuat(0.000000, 0.000000, 0.713440, -0.700716)), *pCube015Shape1));
+	pCubes.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-37.190000, 8.419999, -12.520000), PxQuat(0.000000, 0.000000, 0.713440, -0.700716)), *pCube015Shape1));
+	pCubes.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-28.220000, 8.260005, -12.520000), PxQuat(0.000000, 0.000000, 0.713440, -0.700716)), *pCube015Shape1));
+	pCubes.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-29.320000, 8.480004, -1.310000), PxQuat(0.498475, -0.507527, -0.501411, 0.492469)), *pCube015Shape2));
+	pCubes.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-37.990000, 8.419999, -1.420000), PxQuat(0.498475, -0.507527, -0.501411, 0.492469)), *pCube015Shape2));
+	pCubes.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-29.280000, 8.480005, -5.180002), PxQuat(0.498475, -0.507527, -0.501411, 0.492469)), *pCube015Shape2));
+	pCubes.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-37.950000, 8.419999, -5.290002), PxQuat(0.498475, -0.507527, -0.501411, 0.492469)), *pCube015Shape2));
+	pCubes.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-29.220000, 8.480006, -9.200004), PxQuat(0.498475, -0.507527, -0.501411, 0.492469)), *pCube015Shape2));
+	pCubes.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-37.890000, 8.419999, -9.310003), PxQuat(0.498475, -0.507527, -0.501411, 0.492469)), *pCube015Shape2));
+	pCubes.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-29.220000, 8.480006, -13.284400), PxQuat(0.498475, -0.507527, -0.501411, 0.492469)), *pCube015Shape2));
+	pCubes.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-37.890000, 8.419999, -13.394400), PxQuat(0.498475, -0.507527, -0.501411, 0.492469)), *pCube015Shape2));
+	pCubes.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-37.730000, -0.520000, -8.530000), PxQuat(0, 0, 0, 1)), *pCube016Shape));
+	pCubes.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-37.730000, -0.520000, -0.200000), PxQuat(0, 0, 0, 1)), *pCube016Shape));
+	pCubes.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-37.760000, -0.520000, -8.739999), PxQuat(0, 0, 0, 1)), *pCube017Shape));
+	pCubes.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-37.760000, -0.520000, -0.250000), PxQuat(0, 0, 0, 1)), *pCube017Shape));
+	for (auto i = pCubes.begin(); i != pCubes.end(); ++i) {
+		UserData* ud = new UserData();
+		ud->objType = FilterGroup::eBACKGROUND;
+		(*i)->userData = ud;
+		gInstance->mMap4Scene->addActor(**i);
+	}
+	pCube004Shape->release();
+	pCube009Shape->release();
+	pCube012Shape->release();
+	pCube013Shape->release();
+	pCube014Shape->release();
+	pCube015Shape0->release();
+	pCube015Shape1->release();
+	pCube015Shape2->release();
+	pCube016Shape->release();
+	pCube017Shape->release();
+
+	PxShape* cylinderShape = gInstance->mPhysics->createShape(PxCapsuleGeometry(1 * 33 * 0.015 * 2, 3.5 * 33 * 0.015 * 2), *gInstance->mMaterial);
+	cylinderShape->setLocalPose(PxTransform(PxQuat(PxHalfPi, PxVec3(0, 0, 1))));
+	setupFiltering(cylinderShape, FilterGroup::eBACKGROUND, FilterGroup::eBULLET);
+	PxRigidStatic* cylinder = PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-33.170000, 0.940000, -5.560003)), *cylinderShape);
+	UserData* cylinderud = new UserData();
+	cylinderud->objType = FilterGroup::eBACKGROUND;
+	cylinder->userData = cylinderud;
+	gInstance->mMap4Scene->addActor(*cylinder);
+
+	PxShape* floor2Shape = gInstance->mPhysics->createShape(PxBoxGeometry(6.143843 * 0.4348328, 1.809403 * 0.4348328, 7.119961 * 0.4348328), *gInstance->mMaterial);
+	setupFiltering(floor2Shape, FilterGroup::eBACKGROUND, FilterGroup::eBULLET);
+	vector<PxRigidStatic*> floor2s;
+	floor2s.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(3.330992, -0.062493, 3.631158)), *floor2Shape));
+	floor2s.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-1.519008, -0.062493, 3.631158)), *floor2Shape));
+	floor2s.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-6.399007, -0.062493, 3.631158)), *floor2Shape));
+	floor2s.emplace_back(PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-1.519008, -0.722493, 6.571158)), *floor2Shape));
+	for (auto i = floor2s.begin(); i != floor2s.end(); ++i) {
+		UserData* ud = new UserData();
+		ud->objType = FilterGroup::eBACKGROUND;
+		(*i)->userData = ud;
+		gInstance->mMap4Scene->addActor(**i);
+	}
+	floor2Shape->release();
+
+	PxShape* pillarShape = gInstance->mPhysics->createShape(PxBoxGeometry(5.476431 * 0.15, 3.681873 * 0.15, 5.483719 * 0.15), *gInstance->mMaterial);
+	setupFiltering(pillarShape, FilterGroup::eBACKGROUND, FilterGroup::eBULLET);
+	PxRigidStatic* pillar0 = PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-0.379687, 1.234654, 2.939684)), *pillarShape);
+	UserData* pillar0ud = new UserData();
+	pillar0ud->objType = FilterGroup::eBACKGROUND;
+	pillar0->userData = pillar0ud;
+	gInstance->mMap4Scene->addActor(*pillar0);
+
+	PxRigidStatic* pillar1 = PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(-2.509687, 1.234654, 2.939684)), *pillarShape);
+	UserData* pillar1ud = new UserData();
+	pillar1ud->objType = FilterGroup::eBACKGROUND;
+	pillar1->userData = pillar1ud;
+	gInstance->mMap4Scene->addActor(*pillar1);
+}
+
+void createObjectMapFinal()
+{
+
+}
+
+void createMonsterMapFinal()
+{
+
+}
+
+void createEnvironmentMapFinal()
+{
+
+}
+
+void createClient(int i)
+{
+	PxShape* lHand = gInstance->mPhysics->createShape(PxBoxGeometry(0.06 / 2, 0.135 / 2, 0.3 / 2), *gInstance->mMaterial);
+	PxShape* rHand = gInstance->mPhysics->createShape(PxBoxGeometry(0.06 / 2, 0.135 / 2, 0.3 / 2), *gInstance->mMaterial);
+
+	//clients[i].map2Player.m_body = manager->createController(bodyDesc);
+	clients[i].map2Player.m_lHand = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(0, 0, 0)), *lHand, 5);
+	clients[i].map2Player.m_lHand->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
+	gInstance->mMap2Scene->addActor(*clients[i].map2Player.m_lHand);
+
+	clients[i].map2Player.m_rHand = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(0, 0, 0)), *rHand, 5);
+	clients[i].map2Player.m_rHand->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
+	gInstance->mMap2Scene->addActor(*clients[i].map2Player.m_rHand);
+
+	//clients[i].map4Player.m_body = manager->createController(bodyDesc);
+	clients[i].map4Player.m_lHand = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(0, 0, 0)), *lHand, 5);
+	clients[i].map4Player.m_lHand->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
+	UserData* lHandUDMap4 = new UserData();
+	lHandUDMap4->isHand = true;
+	lHandUDMap4->owner_id = i;
+	clients[i].map4Player.m_lHand->userData = lHandUDMap4;
+	gInstance->mMap4Scene->addActor(*clients[i].map4Player.m_lHand);
+
+	clients[i].map4Player.m_rHand = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(0, 0, 0)), *rHand, 5);
+	clients[i].map4Player.m_rHand->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
+	UserData* rHandUDMap4 = new UserData();
+	rHandUDMap4->isHand = true;
+	rHandUDMap4->owner_id = i;
+	clients[i].map4Player.m_rHand->userData = rHandUDMap4;
+	gInstance->mMap4Scene->addActor(*clients[i].map4Player.m_rHand);
+
+	clients[i].map5Player.m_lHand = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(0, 0, 0)), *lHand, 5);
+	clients[i].map5Player.m_lHand->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
+	UserData* lHandUDMap5 = new UserData();
+	lHandUDMap5->isHand = true;
+	lHandUDMap5->owner_id = i;
+	clients[i].map5Player.m_lHand->userData = lHandUDMap5;
+	gInstance->mMap5Scene->addActor(*clients[i].map5Player.m_lHand);
+
+	clients[i].map5Player.m_rHand = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(0, 0, 0)), *rHand, 5);
+	clients[i].map5Player.m_rHand->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
+	UserData* rHandUDMap5 = new UserData();
+	rHandUDMap5->isHand = true;
+	rHandUDMap5->owner_id = i;
+	clients[i].map5Player.m_rHand->userData = rHandUDMap5;
+	gInstance->mMap5Scene->addActor(*clients[i].map5Player.m_rHand);
+
+	//clients[i].mapFinalPlayer.m_body = manager->createController(bodyDesc);
+	clients[i].mapFinalPlayer.m_lHand = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(0, 0, 0)), *lHand, 5);
+	clients[i].mapFinalPlayer.m_lHand->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
+	gInstance->mMapFinalScene->addActor(*clients[i].mapFinalPlayer.m_lHand);
+
+	clients[i].mapFinalPlayer.m_rHand = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(0, 0, 0)), *rHand, 5);
+	clients[i].mapFinalPlayer.m_rHand->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
+	gInstance->mMapFinalScene->addActor(*clients[i].mapFinalPlayer.m_rHand);
+
+	lHand->release();
+	rHand->release();
+
+	clients[i].m_lHandState = HandState::eDEFAULT;
+	clients[i].m_rHandState = HandState::eDEFAULT;
 }
 
 int main()
@@ -1455,10 +2158,33 @@ int main()
 	UserData* map4ud = new UserData();
 	map4ud->objType = FilterGroup::eBACKGROUND;
 	map4->userData = map4ud;
-	map45Shape->release();
+	//map45Shape->release();
 	gInstance->mMap4Scene->addActor(*map4);
 	createEnvironmentMap4();
 	createObjectMap4();
+	createMonsterMap4();
+
+	PxRigidStatic* map5 = PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(0, 0, 0)), *map45Shape);
+	UserData* map5ud = new UserData();
+	map5ud->objType = FilterGroup::eBACKGROUND;
+	map5->userData = map5ud;
+	//map45Shape->release();
+	gInstance->mMap5Scene->addActor(*map5);
+	createEnvironmentMap5();
+	createObjectMap5();
+	createMonsterMap5();
+
+	PxShape* mapFinalShape = createTriangleMesh("meshData\\final_stageMeshData.json", PxVec3(25, 25, 25));
+	setupFiltering(mapFinalShape, FilterGroup::eBACKGROUND, FilterGroup::eBULLET);
+	PxRigidStatic* mapFinal = PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(0, 0, 0)), *mapFinalShape);
+	UserData* mapFud = new UserData();
+	mapFud->objType = FilterGroup::eBACKGROUND;
+	mapFinal->userData = mapFud;
+	mapFinalShape->release();
+	gInstance->mMapFinalScene->addActor(*mapFinal);
+	createEnvironmentMapFinal();
+	createObjectMapFinal();
+	createMonsterMapFinal();
 
 	/*PxShape* navShape = createTriangleMesh("meshData\\map2NavMeshData.json", PxVec3(10, 10, 10));
 	PxRigidStatic* nav = PxCreateStatic(*gInstance->mPhysics, PxTransform(PxVec3(0, 0, 0)), *navShape);
@@ -1537,21 +2263,14 @@ int main()
 		clients[i].m_recv_over.id = i;
 		clients[i].m_sock = accept(g_lSocket, (SOCKADDR*)&clientaddr, &addrlen);
 		err_display("accept: ");
+		if (clients[i].m_sock == INVALID_SOCKET) {
+			--i;
+			continue;
+		}
 		printf("\n클라이언트 접속: IP 주소=%s,포트 번호=%d\n",
 			inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port));
 
-		clients[i].map2Player.m_body = manager->createController(bodyDesc);
-		PxShape* lHand = gInstance->mPhysics->createShape(PxBoxGeometry(0.06/2, 0.135/2, 0.3/2), *gInstance->mMaterial);
-		clients[i].map2Player.m_lHand = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(0, 0, 0)), *lHand, 5);
-		clients[i].map2Player.m_lHand->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
-		gInstance->mMap2Scene->addActor(*clients[i].map2Player.m_lHand);
-		lHand->release();
-
-		PxShape* rHand = gInstance->mPhysics->createShape(PxBoxGeometry(0.06/2, 0.135/2, 0.3/2), *gInstance->mMaterial);
-		clients[i].map2Player.m_rHand = PxCreateDynamic(*gInstance->mPhysics, PxTransform(PxVec3(0, 0, 0)), *rHand, 5);
-		clients[i].map2Player.m_rHand->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
-		gInstance->mMap2Scene->addActor(*clients[i].map2Player.m_rHand);
-		rHand->release();
+		createClient(i);
 
 		DWORD flags = 0;
 		WSARecv(clients[i].m_sock, &clients[i].m_recv_over.wsabuf, 1, NULL, &flags, &clients[i].m_recv_over.over, recv_complete);
@@ -1564,8 +2283,12 @@ int main()
 		SleepEx(1, true);
 	}
 
+	send_login_ok_packet(0);
+	send_login_ok_packet(1);
 	send_enter_packet(0, 1);
 	send_enter_packet(1, 0);
+
+	send_map2_clear();
 
 	bool loop = true;
 
@@ -1573,6 +2296,10 @@ int main()
 	auto end_t_m2 = high_resolution_clock::now();
 	auto start_t_m4 = high_resolution_clock::now();
 	auto end_t_m4 = high_resolution_clock::now();
+	auto start_t_m5 = high_resolution_clock::now();
+	auto end_t_m5 = high_resolution_clock::now();
+	auto start_t_mF = high_resolution_clock::now();
+	auto end_t_mF = high_resolution_clock::now();
 	while (loop) {
 		if (_kbhit()) {
 			switch (_getch())
@@ -1599,14 +2326,21 @@ int main()
 						// 제거된 몬스터 패킷 전송
 						UserData* ud = (UserData*)(*iter)->userData;
 						if (ud->objType == FilterGroup::eMONSTER) {
-							send_monster_remove(ud->id);
+							send_monster_remove_map2(ud->id);
+							gInstance->mMap2Scene->removeActor(**iter);
 						}
-						delete ud;
-						(*iter)->release();
+						else {
+							delete ud;
+							(*iter)->release();
+						}
 					}
 					gInstance->mSimulationEventCallbackMap2.removedActors.clear();
 				}
 				//gInstance->mSimulationEventCallbackMap2.removedActorsLock.unlock();
+				if (gInstance->mSimulationEventCallbackMap2.puzzleCount > 4) {
+					gInstance->mSimulationEventCallbackMap2.puzzleCount = -1;
+					send_map2_clear();
+				}
 			}
 		}
 		else {
@@ -1627,12 +2361,19 @@ int main()
 						// 제거된 몬스터 패킷 전송
 						UserData* ud = (UserData*)(*iter)->userData;
 						if (ud->objType == FilterGroup::eMONSTER) {
-							send_monster_remove(ud->id);
+							send_monster_remove_map4(ud->id);
+							gInstance->mMap4Scene->removeActor(**iter);
 						}
-						delete ud;
-						(*iter)->release();
+						else {
+							delete ud;
+							(*iter)->release();
+						}
 					}
-					gInstance->mSimulationEventCallbackMap2.removedActors.clear();
+					gInstance->mSimulationEventCallbackMap4.removedActors.clear();
+				}
+				if (gInstance->mSimulationEventCallbackMap4.gemOwnerId != -1) {
+					send_gem_owner(gInstance->mSimulationEventCallbackMap4.gemOwnerId);
+					gInstance->mSimulationEventCallbackMap4.gemOwnerId = -1;
 				}
 				//gInstance->mSimulationEventCallbackMap2.removedActorsLock.unlock();
 			}
@@ -1641,7 +2382,72 @@ int main()
 			start_t_m4 = high_resolution_clock::now();
 		}
 
-		
+		if (nbUserOfMap5 > 0) {
+			end_t_m5 = high_resolution_clock::now();
+			auto elapsedTime = duration_cast<milliseconds>(end_t_m5 - start_t_m5).count();
+			float et = elapsedTime * 0.001;
+			if (et >= 1.f / 60) {
+				start_t_m5 = end_t_m5;
+				gInstance->stepPhysics(et, 5);
+				send_object_move_packet_map5();
+				//gInstance->mSimulationEventCallbackMap4.removedActorsLock.lock();
+				if (!gInstance->mSimulationEventCallbackMap5.removedActors.empty()) {
+					for (auto iter = gInstance->mSimulationEventCallbackMap5.removedActors.begin(); iter != gInstance->mSimulationEventCallbackMap5.removedActors.end(); ++iter) {
+						// 제거된 몬스터 패킷 전송
+						UserData* ud = (UserData*)(*iter)->userData;
+						if (ud->objType == FilterGroup::eMONSTER) {
+							send_monster_remove_map5(ud->id);
+							gInstance->mMap4Scene->removeActor(**iter);
+						}
+						else {
+							delete ud;
+							(*iter)->release();
+						}
+					}
+					gInstance->mSimulationEventCallbackMap5.removedActors.clear();
+				}
+				if (gInstance->mSimulationEventCallbackMap5.gemOwnerId != -1) {
+					send_gem_owner(gInstance->mSimulationEventCallbackMap5.gemOwnerId);
+					gInstance->mSimulationEventCallbackMap5.gemOwnerId = -1;
+				}
+				//gInstance->mSimulationEventCallbackMap2.removedActorsLock.unlock();
+			}
+		}
+		else {
+			start_t_m5 = high_resolution_clock::now();
+		}
+
+		if (nbUserOfMapFinal > 0) {
+			end_t_mF = high_resolution_clock::now();
+			auto elapsedTime = duration_cast<milliseconds>(end_t_mF - start_t_mF).count();
+			float et = elapsedTime * 0.001;
+			if (et >= 1.f / 60) {
+				start_t_mF = end_t_mF;
+				gInstance->stepPhysics(et, 6);
+				send_object_move_packet_mapFinal();
+				//gInstance->mSimulationEventCallbackMap4.removedActorsLock.lock();
+				if (!gInstance->mSimulationEventCallbackMapFinal.removedActors.empty()) {
+					for (auto iter = gInstance->mSimulationEventCallbackMapFinal.removedActors.begin(); iter != gInstance->mSimulationEventCallbackMapFinal.removedActors.end(); ++iter) {
+						// 제거된 몬스터 패킷 전송
+						UserData* ud = (UserData*)(*iter)->userData;
+						if (ud->objType == FilterGroup::eMONSTER) {
+							send_monster_remove_mapFinal(ud->id);
+							gInstance->mMapFinalScene->removeActor(**iter);
+						}
+						else {
+							delete ud;
+							(*iter)->release();
+						}
+					}
+					gInstance->mSimulationEventCallbackMapFinal.removedActors.clear();
+				}
+				//gInstance->mSimulationEventCallbackMap2.removedActorsLock.unlock();
+			}
+		}
+		else {
+			start_t_mF = high_resolution_clock::now();
+		}
+
 		SleepEx(1, true);
 	}
 

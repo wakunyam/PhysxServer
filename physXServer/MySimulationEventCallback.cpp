@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <iostream>
 #include "PxPhysicsAPI.h"
+#include "PhysXClass.h"
 
 void MySimulationEventCallback::onContact(const PxContactPairHeader& pairHeader, const PxContactPair* pairs, PxU32 nbPairs)
 {
@@ -48,6 +49,29 @@ void MySimulationEventCallback::onContact(const PxContactPairHeader& pairHeader,
             if (std::find(removedActors.begin(), removedActors.end(), pairHeader.actors[1]) == removedActors.end())
                 removedActors.emplace_back(pairHeader.actors[1]);
             //removedActorsLock.unlock();
+        }
+    }
+}
+
+void MySimulationEventCallback::onTrigger(PxTriggerPair* pairs, PxU32 count)
+{
+    PhysXClass* gInstance = PhysXClass::getInstance();
+    for (PxU32 i = 0; i < count; i++) {
+        UserData* ud = (UserData*)pairs[i].otherActor->userData;
+        if (ud->isPuzzle) {
+            PxFixedJoint* joint = PxFixedJointCreate(*gInstance->mPhysics, pairs[i].otherActor, PxTransform(PxVec3(0, -1.3590325 / 2, 0)), pairs[i].triggerActor, PxTransform(PxVec3(0, 0, 0)));
+            ud->owner_id = 2;
+            ++puzzleCount;
+            //gInstance->mMap2Scene->lockWrite();
+            //pairs[i].triggerShape->setFlag(PxShapeFlag::eTRIGGER_SHAPE, false);
+            //((PxRigidDynamic*)pairs[i].otherActor)->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
+            //gInstance->mMap2Scene->unlockWrite();
+        }
+        if (ud->isHand) {
+            // 젬 소유권자에 대한 패킷을 양쪽 클라이언트에 전송
+            gemOwnerId = ud->owner_id;
+            if (std::find(removedActors.begin(), removedActors.end(), pairs[i].triggerActor) == removedActors.end())
+                removedActors.emplace_back(pairs[i].triggerActor);
         }
     }
 }

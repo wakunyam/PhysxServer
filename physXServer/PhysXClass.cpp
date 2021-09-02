@@ -15,6 +15,11 @@ PxFilterFlags myFilterShader(
 	PxFilterObjectAttributes attributes1, PxFilterData filterData1,
 	PxPairFlags& pairFlags, const void* constantBlock, PxU32 constantBlockSize)
 {
+	if (PxFilterObjectIsTrigger(attributes0) || PxFilterObjectIsTrigger(attributes1)) {
+		pairFlags = PxPairFlag::eTRIGGER_DEFAULT;
+		return PxFilterFlag::eDEFAULT;
+	}
+
 	pairFlags = PxPairFlag::eCONTACT_DEFAULT;
 
 	// trigger the contact callback for pairs (A,B) where 
@@ -62,6 +67,28 @@ PhysXClass::PhysXClass()
 	sceneDescMap4.dynamicStructure = PxPruningStructureType::eDYNAMIC_AABB_TREE;
 	mMap4Scene = mPhysics->createScene(sceneDescMap4);
 
+	PxSceneDesc sceneDescMap5(mPhysics->getTolerancesScale());
+	sceneDescMap5.gravity = PxVec3(0.0f, -9.81f, 0.0f);
+	mDispatcher = PxDefaultCpuDispatcherCreate(2);
+	sceneDescMap5.cpuDispatcher = mDispatcher;
+	sceneDescMap5.filterShader = myFilterShader;
+	sceneDescMap5.simulationEventCallback = &mSimulationEventCallbackMap5;
+	sceneDescMap5.flags |= PxSceneFlag::eENABLE_CCD;
+	sceneDescMap5.staticStructure = PxPruningStructureType::eDYNAMIC_AABB_TREE;
+	sceneDescMap5.dynamicStructure = PxPruningStructureType::eDYNAMIC_AABB_TREE;
+	mMap4Scene = mPhysics->createScene(sceneDescMap5);
+
+	PxSceneDesc sceneDescMapFinal(mPhysics->getTolerancesScale());
+	sceneDescMapFinal.gravity = PxVec3(0.0f, -9.81f, 0.0f);
+	mDispatcher = PxDefaultCpuDispatcherCreate(2);
+	sceneDescMapFinal.cpuDispatcher = mDispatcher;
+	sceneDescMapFinal.filterShader = myFilterShader;
+	sceneDescMapFinal.simulationEventCallback = &mSimulationEventCallbackMapFinal;
+	sceneDescMapFinal.flags |= PxSceneFlag::eENABLE_CCD;
+	sceneDescMapFinal.staticStructure = PxPruningStructureType::eDYNAMIC_AABB_TREE;
+	sceneDescMapFinal.dynamicStructure = PxPruningStructureType::eDYNAMIC_AABB_TREE;
+	mMapFinalScene = mPhysics->createScene(sceneDescMapFinal);
+
 	PxPvdSceneClient* pvdClient = mMap2Scene->getScenePvdClient();
 	if (pvdClient) {
 		pvdClient->setScenePvdFlag(PxPvdSceneFlag::eTRANSMIT_CONSTRAINTS, true);
@@ -101,7 +128,7 @@ PhysXClass::~PhysXClass()
 	}
 }
 
-void PhysXClass::stepPhysics(float elapsedTime,int scene)
+void PhysXClass::stepPhysics(float elapsedTime, int scene)
 {
 	if (scene == 2) {
 		mMap2Scene->simulate(elapsedTime);
@@ -110,5 +137,13 @@ void PhysXClass::stepPhysics(float elapsedTime,int scene)
 	else if (scene == 4) {
 		mMap4Scene->simulate(elapsedTime);
 		mMap4Scene->fetchResults(true);
+	}
+	else if (scene == 5) {
+		mMap5Scene->simulate(elapsedTime);
+		mMap5Scene->fetchResults(true);
+	}
+	else if (scene == 6) {
+		mMapFinalScene->simulate(elapsedTime);
+		mMapFinalScene->fetchResults(true);
 	}
 }
