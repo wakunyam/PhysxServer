@@ -76,7 +76,7 @@ PhysXClass::PhysXClass()
 	sceneDescMap5.flags |= PxSceneFlag::eENABLE_CCD;
 	sceneDescMap5.staticStructure = PxPruningStructureType::eDYNAMIC_AABB_TREE;
 	sceneDescMap5.dynamicStructure = PxPruningStructureType::eDYNAMIC_AABB_TREE;
-	mMap4Scene = mPhysics->createScene(sceneDescMap5);
+	mMap5Scene = mPhysics->createScene(sceneDescMap5);
 
 	PxSceneDesc sceneDescMapFinal(mPhysics->getTolerancesScale());
 	sceneDescMapFinal.gravity = PxVec3(0.0f, -9.81f, 0.0f);

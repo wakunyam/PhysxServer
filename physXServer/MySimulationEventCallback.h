@@ -19,6 +19,8 @@ struct UserData {
 	FilterGroup objType;
 	bool isPuzzle = false;
 	bool isHand = false;
+	bool isGem = false;
+	bool isActive = true;
 };
 
 class MySimulationEventCallback : public PxSimulationEventCallback

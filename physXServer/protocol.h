@@ -6,7 +6,8 @@ enum HandState {
 	eDEFAULT = 0,
 	eGUN,
 	eTORCHLIGHT,
-	eGEM4
+	eGEM4,
+	eGEM5
 };
 
 enum EnemyState {
@@ -205,7 +206,11 @@ constexpr char SC_PACKET_CHANGE_MONSTER_STATE = 10;
 constexpr char SC_PACKET_MAP2_CLEAR = 11;
 constexpr char SC_PACKET_Y_POS = 12;
 constexpr char SC_PACKET_CHANGE_SCENE = 13;
-constexpr char SC_PACKET_GET_GEM = 14;
+constexpr char SC_PACKET_GET_GEM4 = 14;
+constexpr char SC_PACKET_GET_GEM5 = 15;
+constexpr char SC_PACKET_MAP3_GEM = 16;
+constexpr char SC_PACKET_ENTER_TORCH = 17;
+constexpr char SC_PACKET_TORCH_POS = 18;
 
 constexpr char CS_PACKET_LOGIN = 0;
 constexpr char CS_PACKET_MOVE = 1;
@@ -219,6 +224,9 @@ constexpr char CS_PACKET_CHANGE_MONSTER_STATE = 8;
 constexpr char CS_PACKET_CHANGE_SCENE = 9;
 constexpr char CS_PACKET_Y_POS = 10;
 constexpr char CS_PACKET_MAP4_CLEAR = 11;
+constexpr char CS_PACKET_MAP3_GEM = 12;
+constexpr char CS_PACKET_ENTER_TORCH = 13;
+constexpr char CS_PACKET_TORCH_POS = 14;
 
 struct sc_packet_login_ok {
 	char size;
@@ -354,10 +362,34 @@ struct sc_packet_change_scene {
 	char type;
 };
 
-struct sc_packet_get_gem {
+struct sc_packet_get_gem4 {
 	char size;
 	char type;
 	int owner_id;
+};
+
+struct sc_packet_get_gem5 {
+	char size;
+	char type;
+	int owner_id;
+};
+
+struct sc_packet_map3_gem {
+	char size;
+	char type;
+	bool side;
+};
+
+struct sc_packet_enter_torch {
+	char size;
+	char type;
+	bool enter;
+};
+
+struct sc_packet_torch_pos {
+	char size;
+	char type;
+	float x, y, z;
 };
 
 struct cs_packet_login {
@@ -465,5 +497,23 @@ struct cs_packet_y_pos {
 struct cs_packet_map4_clear {
 	char size;
 	char type;
+};
+
+struct cs_packet_map3_gem {
+	char size;
+	char type;
+	bool side;
+};
+
+struct cs_packet_enter_torch {
+	char size;
+	char type;
+	bool enter;
+};
+
+struct cs_packet_torch_pos {
+	char size;
+	char type;
+	float x, y, z;
 };
 #pragma pack(pop)
